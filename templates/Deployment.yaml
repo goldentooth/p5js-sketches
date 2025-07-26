@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: p5js-sketches
+  namespace: {{ .Values.spec.namespace }}
+  labels:
+    app: p5js-sketches
+spec:
+  replicas: {{ .Values.server.replicas }}
+  selector:
+    matchLabels:
+      app: p5js-sketches
+  template:
+    metadata:
+      labels:
+        app: p5js-sketches
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/health"
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+        runAsUser: {{ .Values.security.runAsUser }}
+        runAsGroup: {{ .Values.security.runAsGroup }}
+        fsGroup: {{ .Values.security.runAsGroup }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - p5js-sketches
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: nginx
+        image: {{ .Values.server.image }}
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          limits:
+            memory: {{ .Values.server.resources.limits.memory }}
+            cpu: {{ .Values.server.resources.limits.cpu }}
+          requests:
+            memory: {{ .Values.server.resources.requests.memory }}
+            cpu: {{ .Values.server.resources.requests.cpu }}
+        securityContext:
+          allowPrivilegeEscalation: {{ .Values.security.allowPrivilegeEscalation }}
+          readOnlyRootFilesystem: {{ .Values.security.readOnlyRootFilesystem }}
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: sketches-storage
+          mountPath: /srv/sketches
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+          readOnly: true
+        - name: nginx-cache
+          mountPath: /var/cache/nginx
+        - name: nginx-run
+          mountPath: /var/run
+        - name: nginx-tmp
+          mountPath: /tmp
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+      volumes:
+      - name: sketches-storage
+        persistentVolumeClaim:
+          claimName: sketches-storage
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+      - name: nginx-cache
+        emptyDir: {}
+      - name: nginx-run
+        emptyDir: {}
+      - name: nginx-tmp
+        emptyDir: {}

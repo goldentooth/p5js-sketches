@@ -1,0 +1,45 @@
+spec:
+  projectName: gitops-repo
+  releaseName: p5js-sketches  
+  namespace: p5js-sketches
+  
+  # Ceph storage configuration
+  storage:
+    storageClass: 'ceph-csi-cephfs'
+    size: '10Gi'
+    accessModes: 'ReadWriteMany'
+    
+  # Server configuration
+  server:
+    image: 'nginx:1.25-alpine'
+    replicas: 2
+    resources:
+      limits:
+        memory: '64Mi'
+        cpu: '100m'
+      requests:
+        memory: '32Mi'
+        cpu: '50m'
+        
+  # Service configuration  
+  service:
+    type: 'LoadBalancer'
+    port: 80
+    annotations:
+      external-dns.alpha.kubernetes.io/hostname: 'p5js-sketches.services.k8s.goldentooth.net'
+      metallb.universe.tf/address-pool: 'default'
+      
+  # Security configuration
+  security:
+    runAsNonRoot: true
+    runAsUser: 101  # nginx user
+    runAsGroup: 101
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    
+  # Performance tuning for Pi hardware
+  nginx:
+    workerProcesses: 'auto'
+    workerConnections: 1024
+    keepaliveTimeout: 65
+    clientMaxBodySize: '1m'

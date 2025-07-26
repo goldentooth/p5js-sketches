@@ -1,0 +1,6 @@
+apiVersion: 'v2'
+name: 'p5js-sketches'
+description: 'P5.js Sketch Server - Static file server for hosting p5.js sketches on Ceph storage'
+type: 'application'
+version: '0.0.1'
+appVersion: '0.0.1'

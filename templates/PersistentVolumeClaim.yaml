@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sketches-storage
+  namespace: {{ .Values.spec.namespace }}
+spec:
+  accessModes:
+    - {{ .Values.storage.accessModes }}
+  storageClassName: {{ .Values.storage.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.size }}
