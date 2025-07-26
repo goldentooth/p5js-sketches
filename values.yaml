@@ -3,11 +3,11 @@ spec:
   releaseName: p5js-sketches  
   namespace: p5js-sketches
   
-  # Ceph storage configuration
+  # Ceph storage configuration  
   storage:
-    storageClass: 'ceph-rbd'
+    storageClass: 'ceph-cephfs'
     size: '10Gi'
-    accessModes: 'ReadWriteOnce'
+    accessModes: 'ReadWriteMany'
     
   # Server configuration
   server:
