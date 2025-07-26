@@ -37,152 +37,68 @@ spec:
                   values:
                   - p5js-sketches
               topologyKey: kubernetes.io/hostname
-      containers:
-      # Sketch sync controller - watches ConfigMaps and creates sync jobs
-      - name: sketch-controller
-        image: bitnami/kubectl:latest
+      initContainers:
+      # Sketch sync init container - syncs sketches at startup
+      - name: sketch-sync
+        image: alpine:latest
         command:
         - /bin/sh
         - -c
         - |
-          apk add --no-cache curl jq git
-          echo "Starting p5js-sketches controller..."
+          apk add --no-cache curl jq git kubectl
+          echo "Syncing registered sketches..."
           
-          while true; do
-            echo "$(date): Checking for new sketch registrations..."
-            
-            # Get all registration ConfigMaps
-            kubectl get configmaps -n {{ .Values.spec.namespace }} \
-              -l p5js-sketch/registration=true \
-              -o json | jq -r '.items[] | 
-                select(.metadata.annotations."p5js-sketch/sync-status" != "completed") |
-                "\(.metadata.name)|\(.data."registration.json" | fromjson | .repository)|\(.data."registration.json" | fromjson | .branch)|\(.data."registration.json" | fromjson | .name)|\(.data."registration.json" | fromjson | .targetPath)"' | \
-            while IFS='|' read -r configmap_name repo_url branch sketch_name target_path; do
-              if [ -n "$configmap_name" ]; then
-                echo "Processing sketch: $sketch_name (ConfigMap: $configmap_name)"
-                
-                # Create sync job for this sketch
-                cat << EOF | kubectl apply -f -
-          apiVersion: batch/v1
-          kind: Job
-          metadata:
-            name: sync-${sketch_name}-$(date +%s)
-            namespace: {{ .Values.spec.namespace }}
-            labels:
-              p5js-sketch/name: "${sketch_name}"
-              p5js-sketch/component: sync
-              created-by: sketch-controller
-          spec:
-            template:
-              spec:
-                restartPolicy: OnFailure
-                securityContext:
-                  runAsNonRoot: true
-                  runAsUser: 1000
-                  runAsGroup: 1000
-                  fsGroup: 1000
-                containers:
-                - name: git-sync
-                  image: alpine/git:latest
-                  command:
-                  - /bin/sh
-                  - -c
-                  - |
-                    set -e
-                    echo "Syncing sketch: ${sketch_name}"
-                    echo "Repository: ${repo_url}"
-                    echo "Target: ${target_path}"
-                    
-                    # Remove existing directory
-                    if [ -d "${target_path}" ]; then
-                      rm -rf "${target_path}"
-                    fi
-                    
-                    # Clone repository
-                    git clone --depth 1 --branch ${branch} "${repo_url}" "${target_path}"
-                    cd "${target_path}"
-                    rm -rf .git
-                    
-                    # Set ownership for nginx
-                    chown -R 101:101 "${target_path}"
-                    
-                    # Verify required files
-                    if [ ! -f "index.html" ] || [ ! -f "sketch.js" ]; then
-                      echo "ERROR: Required files missing!"
-                      exit 1
-                    fi
-                    
-                    echo "Sync completed successfully!"
-                  resources:
-                    limits:
-                      memory: "128Mi"
-                      cpu: "200m"
-                    requests:
-                      memory: "64Mi"
-                      cpu: "100m"
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop: [ALL]
-                  volumeMounts:
-                  - name: sketches-storage
-                    mountPath: /srv/sketches
-                volumes:
-                - name: sketches-storage
-                  persistentVolumeClaim:
-                    claimName: sketches-storage
-            backoffLimit: 3
-            activeDeadlineSeconds: 300
-          EOF
-                
-                # Mark ConfigMap as processed
-                kubectl annotate configmap "$configmap_name" -n {{ .Values.spec.namespace }} \
-                  p5js-sketch/sync-status=processing \
-                  p5js-sketch/sync-job="sync-${sketch_name}-$(date +%s)" \
-                  --overwrite
-                
-                echo "Created sync job for $sketch_name"
+          # Get all registration ConfigMaps using kubectl
+          kubectl get configmaps -n {{ .Values.spec.namespace }} \
+            -l p5js-sketch/registration=true \
+            -o json | jq -r '.items[] | 
+              "\(.metadata.name)|\(.data."registration.json" | fromjson | .repository)|\(.data."registration.json" | fromjson | .branch // "main")|\(.data."registration.json" | fromjson | .name)"' | \
+          while IFS='|' read -r configmap_name repository branch name; do
+            if [ -n "$repository" ] && [ -n "$name" ]; then
+              target_path="/srv/sketches/$name"
+              echo "Syncing $name from $repository ($branch) to $target_path"
+              
+              # Remove existing directory
+              rm -rf "$target_path"
+              
+              # Clone repository
+              git clone --depth 1 --branch "$branch" "$repository" "$target_path" || {
+                echo "Failed to clone $repository"
+                continue
+              }
+              
+              cd "$target_path"
+              rm -rf .git
+              
+              # Set ownership for nginx
+              chown -R 101:101 "$target_path"
+              
+              # Verify required files
+              if [ ! -f "index.html" ] || [ ! -f "sketch.js" ]; then
+                echo "WARNING: Required files missing in $name!"
+              else
+                echo "Successfully synced $name"
               fi
-            done
-            
-            # Check for completed jobs and update ConfigMaps
-            kubectl get jobs -n {{ .Values.spec.namespace }} \
-              -l p5js-sketch/component=sync \
-              -o json | jq -r '.items[] | 
-                select(.status.succeeded == 1) |
-                "\(.metadata.labels."p5js-sketch/name")|\(.metadata.name)"' | \
-            while IFS='|' read -r sketch_name job_name; do
-              if [ -n "$sketch_name" ]; then
-                kubectl annotate configmap "sketch-$sketch_name" -n {{ .Values.spec.namespace }} \
-                  p5js-sketch/sync-status=completed \
-                  p5js-sketch/completed-at="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-                  --overwrite
-                echo "Marked $sketch_name as completed"
-                
-                # Clean up old sync jobs
-                kubectl delete job "$job_name" -n {{ .Values.spec.namespace }}
-              fi
-            done
-            
-            echo "Controller cycle completed, sleeping 30s..."
-            sleep 30
+            fi
           done
+          
+          echo "Sketch sync completed"
         resources:
           limits:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "500m"
           requests:
-            memory: "64Mi"
-            cpu: "50m"
+            memory: "128Mi"
+            cpu: "250m"
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
           capabilities:
             drop: [ALL]
         volumeMounts:
         - name: sketches-storage
           mountPath: /srv/sketches
       
+      containers:
       # Main nginx server
       - name: nginx
         image: {{ .Values.spec.server.image }}
