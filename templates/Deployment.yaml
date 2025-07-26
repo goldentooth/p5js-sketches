@@ -45,8 +45,11 @@ spec:
         - /bin/sh
         - -c
         - |
-          apk add --no-cache curl jq git
           echo "Syncing registered sketches..."
+          echo "kubectl version:"
+          kubectl version --client
+          echo "Checking for jq:"
+          which jq || echo "jq not found"
           
           # Get all registration ConfigMaps using kubectl
           kubectl get configmaps -n {{ .Values.spec.namespace }} \
@@ -91,7 +94,6 @@ spec:
             memory: "128Mi"
             cpu: "250m"
         securityContext:
-          runAsUser: 0
           allowPrivilegeEscalation: false
           capabilities:
             drop: [ALL]
