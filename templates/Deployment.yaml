@@ -40,7 +40,7 @@ spec:
       containers:
       # Sketch sync controller - watches ConfigMaps and creates sync jobs
       - name: sketch-controller
-        image: alpine/k8s:latest
+        image: bitnami/kubectl:latest
         command:
         - /bin/sh
         - -c
