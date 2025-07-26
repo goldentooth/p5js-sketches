@@ -6,13 +6,13 @@ metadata:
   labels:
     app: p5js-sketches
   annotations:
-    {{- range $key, $value := .Values.service.annotations }}
+    {{- range $key, $value := .Values.spec.service.annotations }}
     {{ $key }}: {{ $value | quote }}
     {{- end }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.spec.service.type }}
   ports:
-  - port: {{ .Values.service.port }}
+  - port: {{ .Values.spec.service.port }}
     targetPort: 8080
     protocol: TCP
     name: http

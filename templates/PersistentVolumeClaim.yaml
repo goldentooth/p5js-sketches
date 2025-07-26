@@ -5,8 +5,8 @@ metadata:
   namespace: {{ .Values.spec.namespace }}
 spec:
   accessModes:
-    - {{ .Values.storage.accessModes }}
-  storageClassName: {{ .Values.storage.storageClass }}
+    - {{ .Values.spec.storage.accessModes }}
+  storageClassName: {{ .Values.spec.storage.storageClass }}
   resources:
     requests:
-      storage: {{ .Values.storage.size }}
+      storage: {{ .Values.spec.storage.size }}
