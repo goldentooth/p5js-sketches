@@ -5,14 +5,14 @@ spec:
   
   # Ceph storage configuration
   storage:
-    storageClass: 'ceph-csi-cephfs'
+    storageClass: 'ceph-rbd'
     size: '10Gi'
-    accessModes: 'ReadWriteMany'
+    accessModes: 'ReadWriteOnce'
     
   # Server configuration
   server:
     image: 'nginx:1.25-alpine'
-    replicas: 2
+    replicas: 1
     resources:
       limits:
         memory: '64Mi'
