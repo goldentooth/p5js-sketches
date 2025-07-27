@@ -6,7 +6,7 @@ metadata:
   labels:
     app: {{ .Values.spec.releaseName }}
 spec:
-  replicas: {{ .Values.server.replicas }}
+  replicas: {{ .Values.spec.server.replicas }}
   selector:
     matchLabels:
       app: {{ .Values.spec.releaseName }}
@@ -26,9 +26,9 @@ spec:
               topologyKey: kubernetes.io/hostname
       serviceAccountName: {{ .Values.spec.releaseName }}-controller
       securityContext:
-        runAsNonRoot: {{ .Values.security.runAsNonRoot }}
-        runAsUser: {{ .Values.security.runAsUser }}
-        runAsGroup: {{ .Values.security.runAsGroup }}
+        runAsNonRoot: {{ .Values.spec.security.runAsNonRoot }}
+        runAsUser: {{ .Values.spec.security.runAsUser }}
+        runAsGroup: {{ .Values.spec.security.runAsGroup }}
       initContainers:
       # Sketch sync init container - syncs sketches at startup
       - name: sketch-sync
@@ -39,7 +39,7 @@ spec:
         - |
 {{ .Files.Get "sync-script.sh" | replace "NAMESPACE_PLACEHOLDER" .Values.spec.namespace | replace "GALLERY_TEMPLATE_PLACEHOLDER" (.Files.Get "gallery-template.html") | indent 10 }}
         securityContext:
-          allowPrivilegeEscalation: {{ .Values.security.allowPrivilegeEscalation }}
+          allowPrivilegeEscalation: {{ .Values.spec.security.allowPrivilegeEscalation }}
           readOnlyRootFilesystem: false
           runAsNonRoot: false
           runAsUser: 0
@@ -50,13 +50,13 @@ spec:
           mountPath: /tmp
       containers:
       - name: nginx
-        image: {{ .Values.server.image }}
+        image: {{ .Values.spec.server.image }}
         ports:
         - containerPort: 80
           name: http
         securityContext:
-          allowPrivilegeEscalation: {{ .Values.security.allowPrivilegeEscalation }}
-          readOnlyRootFilesystem: {{ .Values.security.readOnlyRootFilesystem }}
+          allowPrivilegeEscalation: {{ .Values.spec.security.allowPrivilegeEscalation }}
+          readOnlyRootFilesystem: {{ .Values.spec.security.readOnlyRootFilesystem }}
         volumeMounts:
         - name: sketches-storage
           mountPath: /usr/share/nginx/html
@@ -71,11 +71,11 @@ spec:
           mountPath: /var/run
         resources:
           requests:
-            memory: {{ .Values.server.resources.requests.memory }}
-            cpu: {{ .Values.server.resources.requests.cpu }}
+            memory: {{ .Values.spec.server.resources.requests.memory }}
+            cpu: {{ .Values.spec.server.resources.requests.cpu }}
           limits:
-            memory: {{ .Values.server.resources.limits.memory }}
-            cpu: {{ .Values.server.resources.limits.cpu }}
+            memory: {{ .Values.spec.server.resources.limits.memory }}
+            cpu: {{ .Values.spec.server.resources.limits.cpu }}
         livenessProbe:
           httpGet:
             path: /
