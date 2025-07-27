@@ -5,7 +5,7 @@ spec:
   
   # Ceph storage configuration  
   storage:
-    storageClass: 'ceph-cephfs'
+    storageClass: 'rook-ceph-cephfs'
     size: '10Gi'
     accessModes: 'ReadWriteMany'
     
