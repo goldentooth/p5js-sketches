@@ -3,11 +3,11 @@ spec:
   releaseName: p5js-sketches  
   namespace: p5js-sketches
   
-  # SeaweedFS storage configuration  
+  # Local-path storage configuration  
   storage:
-    storageClass: 'seaweedfs-storage-rwx'
+    storageClass: 'local-path'
     size: '10Gi'
-    accessModes: 'ReadWriteMany'
+    accessModes: 'ReadWriteOnce'
     
   # Server configuration
   server:

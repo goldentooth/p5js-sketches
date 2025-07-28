@@ -80,7 +80,28 @@ for sketch_dir in /srv/sketches/*/; do
     sketch_name=$(basename "$sketch_dir")
     if [ "$sketch_name" != "lost+found" ] && [ -f "$sketch_dir/index.html" ]; then
       sketch_count=$((sketch_count + 1))
-      sketch_cards="$sketch_cards<div class=\"sketch-card\"><div class=\"sketch-title\">$sketch_name</div><a href=\"/$sketch_name/\" class=\"sketch-link\">View Sketch</a></div>"
+      
+      # Check for preview images
+      preview_content=""
+      if [ -f "$sketch_dir/preview.png" ]; then
+        # PNG preview exists
+        if [ -f "$sketch_dir/preview.gif" ]; then
+          # Both PNG and GIF exist - use hover effect
+          preview_content="<div class=\"sketch-preview\"><img src=\"/$sketch_name/preview.png\" alt=\"$sketch_name preview\" class=\"preview-png\"><img src=\"/$sketch_name/preview.gif\" alt=\"$sketch_name animation\" class=\"preview-gif\"></div>"
+        else
+          # Only PNG exists
+          preview_content="<div class=\"sketch-preview\"><img src=\"/$sketch_name/preview.png\" alt=\"$sketch_name preview\"></div>"
+        fi
+      elif [ -f "$sketch_dir/preview.gif" ]; then
+        # Only GIF exists
+        preview_content="<div class=\"sketch-preview\"><img src=\"/$sketch_name/preview.gif\" alt=\"$sketch_name animation\"></div>"
+      else
+        # No preview images - show artistic placeholder
+        first_char=$(echo "$sketch_name" | cut -c1 | tr '[:lower:]' '[:upper:]')
+        preview_content="<div class=\"sketch-preview\"><div class=\"preview-placeholder\">$first_char</div></div>"
+      fi
+      
+      sketch_cards="$sketch_cards<div class=\"sketch-card\">$preview_content<div class=\"sketch-content\"><div class=\"sketch-title\">$sketch_name</div><a href=\"/$sketch_name/\" class=\"sketch-link\">View Sketch</a></div></div>"
     fi
   fi
 done
