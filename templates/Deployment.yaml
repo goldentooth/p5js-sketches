@@ -30,14 +30,62 @@ spec:
         runAsUser: {{ .Values.spec.security.runAsUser }}
         runAsGroup: {{ .Values.spec.security.runAsGroup }}
       initContainers:
-      # Sketch sync init container - syncs sketches at startup
-      - name: sketch-sync
-        image: alpine/k8s:1.30.5
+      # Gallery generator - creates index.html from available sketches
+      - name: gallery-generator
+        image: alpine:3.19
         command:
         - /bin/sh
         - -c
         - |
-{{ .Files.Get "sync-script.sh" | replace "NAMESPACE_PLACEHOLDER" .Values.spec.namespace | replace "GALLERY_TEMPLATE_PLACEHOLDER" (.Files.Get "gallery-template.html") | indent 10 }}
+          set -e
+          echo "Generating gallery index page..."
+          
+          # Create gallery template
+          cat > /tmp/gallery-template.html << 'EOF'
+{{ .Files.Get "gallery-template.html" }}
+          EOF
+          
+          # Build sketch cards HTML from shared storage
+          sketch_cards=""
+          sketch_count=0
+          
+          if [ -d "/shared/sketches" ]; then
+            for sketch_dir in /shared/sketches/*/; do
+              if [ -d "$sketch_dir" ]; then
+                sketch_name=$(basename "$sketch_dir")
+                if [ "$sketch_name" != "lost+found" ] && [ -f "$sketch_dir/index.html" ]; then
+                  sketch_count=$((sketch_count + 1))
+                  
+                  # Check for preview images
+                  preview_content=""
+                  if [ -f "$sketch_dir/preview.png" ]; then
+                    if [ -f "$sketch_dir/preview.gif" ]; then
+                      preview_content="<div class=\"sketch-preview\"><img src=\"/$sketch_name/preview.png\" alt=\"$sketch_name preview\" class=\"preview-png\"><img src=\"/$sketch_name/preview.gif\" alt=\"$sketch_name animation\" class=\"preview-gif\"></div>"
+                    else
+                      preview_content="<div class=\"sketch-preview\"><img src=\"/$sketch_name/preview.png\" alt=\"$sketch_name preview\"></div>"
+                    fi
+                  elif [ -f "$sketch_dir/preview.gif" ]; then
+                    preview_content="<div class=\"sketch-preview\"><img src=\"/$sketch_name/preview.gif\" alt=\"$sketch_name animation\"></div>"
+                  else
+                    first_char=$(echo "$sketch_name" | cut -c1 | tr '[:lower:]' '[:upper:]')
+                    preview_content="<div class=\"sketch-preview\"><div class=\"preview-placeholder\">$first_char</div></div>"
+                  fi
+                  
+                  sketch_cards="$sketch_cards<div class=\"sketch-card\">$preview_content<div class=\"sketch-content\"><div class=\"sketch-title\">$sketch_name</div><a href=\"/$sketch_name/\" class=\"sketch-link\">View Sketch</a></div></div>"
+                fi
+              fi
+            done
+          fi
+          
+          # If no sketches, show message
+          if [ $sketch_count -eq 0 ]; then
+            sketch_cards='<div class="no-sketches">No sketches available yet. Deploy some sketch repositories to see them here!</div>'
+          fi
+          
+          # Replace placeholder and generate final HTML
+          sed "s|{{SKETCH_CARDS}}|$sketch_cards|g" /tmp/gallery-template.html > /shared/sketches/index.html
+          
+          echo "Gallery generated with $sketch_count sketches"
         securityContext:
           allowPrivilegeEscalation: {{ .Values.spec.security.allowPrivilegeEscalation }}
           readOnlyRootFilesystem: false
@@ -45,9 +93,7 @@ spec:
           runAsUser: 0
         volumeMounts:
         - name: sketches-storage
-          mountPath: /srv/sketches
-        - name: tmp
-          mountPath: /tmp
+          mountPath: /shared/sketches
       containers:
       - name: nginx
         image: {{ .Values.spec.server.image }}
@@ -91,7 +137,7 @@ spec:
       volumes:
       - name: sketches-storage
         persistentVolumeClaim:
-          claimName: sketches-storage
+          claimName: sketches-shared-storage
       - name: nginx-config
         configMap:
           name: nginx-config

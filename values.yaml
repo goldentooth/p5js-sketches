@@ -3,9 +3,9 @@ spec:
   releaseName: p5js-sketches  
   namespace: p5js-sketches
   
-  # Local-path storage configuration  
+  # Longhorn storage configuration  
   storage:
-    storageClass: 'local-path'
+    storageClass: 'longhorn-ssd'
     size: '10Gi'
     accessModes: 'ReadWriteOnce'
     
