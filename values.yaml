@@ -3,9 +3,9 @@ spec:
   releaseName: p5js-sketches  
   namespace: p5js-sketches
   
-  # Ceph storage configuration  
+  # SeaweedFS storage configuration  
   storage:
-    storageClass: 'rook-ceph-cephfs'
+    storageClass: 'seaweedfs-storage-rwx'
     size: '10Gi'
     accessModes: 'ReadWriteMany'
     

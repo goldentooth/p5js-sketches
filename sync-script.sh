@@ -9,30 +9,57 @@ which jq || echo "jq not found"
 kubectl get configmaps -n NAMESPACE_PLACEHOLDER \
   -l p5js-sketch/registration=true \
   -o json | jq -r '.items[] | 
-    "\(.metadata.name)|\(.data."registration.json" | fromjson | .repository)|\(.data."registration.json" | fromjson | .branch // "main")|\(.data."registration.json" | fromjson | .name)"' | \
-while IFS='|' read -r configmap_name repository branch name; do
-  if [ -n "$repository" ] && [ -n "$name" ]; then
+    "\(.metadata.name)|\(.data."registration.json" | fromjson | .source.type)|\(.data."registration.json" | fromjson | .source.url)|\(.data."registration.json" | fromjson | .source.branch // "main")|\(.data."registration.json" | fromjson | .name)"' | \
+while IFS='|' read -r configmap_name source_type source_url branch name; do
+  if [ -n "$source_url" ] && [ -n "$name" ]; then
     target_path="/srv/sketches/$name"
-    echo "Syncing $name from $repository ($branch) to $target_path"
+    echo "Syncing $name from $source_url (type: $source_type, branch: $branch) to $target_path"
     
     # Remove existing directory
     rm -rf "$target_path"
+    mkdir -p "$target_path"
     
-    # Clone repository
-    git clone --depth 1 --branch "$branch" "$repository" "$target_path" || {
-      echo "Failed to clone $repository"
-      continue
-    }
-    
-    cd "$target_path"
-    rm -rf .git
+    case "$source_type" in
+      "archive")
+        echo "Using archive method for $name"
+        # Download and extract archive
+        if curl -sL "$source_url" | tar -xz --strip-components=1 -C "$target_path"; then
+          echo "Successfully downloaded and extracted archive for $name"
+        else
+          echo "Failed to download archive from $source_url"
+          continue
+        fi
+        ;;
+      "git")
+        echo "Using git method for $name (development only)"
+        # Create temporary directory for git clone
+        temp_dir="/tmp/git-clone-$name"
+        rm -rf "$temp_dir"
+        
+        if git clone --depth 1 --branch "$branch" "$source_url" "$temp_dir"; then
+          echo "Successfully cloned repository for $name"
+          # Copy files to shared storage
+          cp -r "$temp_dir"/. "$target_path/"
+          # Clean up git metadata and temporary directory
+          rm -rf "$target_path/.git" "$temp_dir"
+        else
+          echo "Failed to clone $source_url"
+          continue
+        fi
+        ;;
+      *)
+        echo "Unknown source type: $source_type for $name"
+        continue
+        ;;
+    esac
     
     # Set ownership for nginx
     chown -R 101:101 "$target_path"
     
     # Verify required files
-    if [ ! -f "index.html" ] || [ ! -f "sketch.js" ]; then
+    if [ ! -f "$target_path/index.html" ] || [ ! -f "$target_path/sketch.js" ]; then
       echo "WARNING: Required files missing in $name!"
+      ls -la "$target_path/"
     else
       echo "Successfully synced $name"
     fi
