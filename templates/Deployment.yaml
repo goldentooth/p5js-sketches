@@ -30,6 +30,64 @@ spec:
         runAsUser: {{ .Values.spec.security.runAsUser }}
         runAsGroup: {{ .Values.spec.security.runAsGroup }}
       initContainers:
+      # Sketch sync - syncs sketches from git repository to shared storage
+      - name: sketch-sync
+        image: registry.k8s.io/git-sync/git-sync:v4.2.1
+        env:
+        - name: GITSYNC_REPO
+          value: "https://github.com/goldentooth/p5js-sketches.git"
+        - name: GITSYNC_BRANCH
+          value: "main"
+        - name: GITSYNC_ROOT
+          value: "/tmp/git"
+        - name: GITSYNC_DEST
+          value: "repo"
+        - name: GITSYNC_ONE_TIME
+          value: "true"
+        - name: GITSYNC_LINK
+          value: "repo"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Syncing sketches from repository..."
+          
+          # Run git-sync once to get the repository
+          /git-sync &
+          SYNC_PID=$!
+          
+          # Wait for sync to complete (check for repo directory)
+          timeout=30
+          while [ $timeout -gt 0 ] && [ ! -d "/tmp/git/repo/sketches" ]; do
+            echo "Waiting for git-sync to complete..."
+            sleep 1
+            timeout=$((timeout - 1))
+          done
+          
+          # Kill git-sync process
+          kill $SYNC_PID 2>/dev/null || true
+          
+          # Create shared sketches directory and copy sketches
+          mkdir -p /shared/sketches
+          
+          if [ -d "/tmp/git/repo/sketches" ]; then
+            cp -r /tmp/git/repo/sketches/* /shared/sketches/
+            echo "Successfully copied sketches to shared storage"
+            ls -la /shared/sketches/
+          else
+            echo "No sketches directory found in repository"
+          fi
+        securityContext:
+          allowPrivilegeEscalation: {{ .Values.spec.security.allowPrivilegeEscalation }}
+          readOnlyRootFilesystem: false
+          runAsNonRoot: false
+          runAsUser: 0
+        volumeMounts:
+        - name: sketches-storage
+          mountPath: /shared/sketches
+        - name: tmp
+          mountPath: /tmp
       # Gallery generator - creates index.html from available sketches
       - name: gallery-generator
         image: alpine:3.19
