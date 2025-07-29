@@ -9,4 +9,4 @@ spec:
   storageClassName: seaweedfs-storage-rwx
   resources:
     requests:
-      storage: 1Gi
+      storage: 10Gi
