@@ -93,7 +93,8 @@ async function captureSketchPreview(browser, sketchPath, sketchName) {
     
     // Load the sketch
     const indexPath = path.join(sketchPath, 'index.html');
-    const fileUrl = `file://${indexPath}`;
+    const absolutePath = path.resolve(indexPath);
+    const fileUrl = `file://${absolutePath}`;
     await page.goto(fileUrl, { waitUntil: 'networkidle0' });
     
     // Wait for sketch to initialize
