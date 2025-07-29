@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Test artifacts
+/tmp/
+*.log
+test-*.png
+test-*.html
+test-*.js
+
+# OS files
+.DS_Store
+Thumbs.db

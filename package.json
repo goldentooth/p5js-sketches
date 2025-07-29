@@ -1,0 +1,18 @@
+{
+  "name": "p5js-sketches-preview-capture",
+  "version": "1.0.0",
+  "description": "Automated preview image capture for p5.js sketches gallery",
+  "main": "capture-previews.js",
+  "scripts": {
+    "capture": "node capture-previews.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "puppeteer": "^21.5.0"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "author": "Goldentooth Cluster",
+  "license": "MIT"
+}
