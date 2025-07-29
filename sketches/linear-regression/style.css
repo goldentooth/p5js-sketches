@@ -1,0 +1,40 @@
+:root {
+  --bg-color: #f8f9fa;
+  --text-color: #212529;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #212529;
+    --text-color: #f8f9fa;
+  }
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+#sketch-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+canvas {
+  display: block;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  canvas {
+    max-width: 90vw;
+    height: auto !important;
+  }
+}
