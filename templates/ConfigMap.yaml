@@ -47,10 +47,16 @@ data:
         location / {
             try_files $uri $uri/ =404;
             
-            # Cache static assets
-            location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
-                expires 1y;
-                add_header Cache-Control "public, immutable";
+            # Cache static assets with shorter duration for development
+            location ~* \.(js|css)$ {
+                expires 5m;
+                add_header Cache-Control "public, max-age=300";
+            }
+            
+            # Cache images longer since they change less frequently
+            location ~* \.(png|jpg|jpeg|gif|ico|svg)$ {
+                expires 1h;
+                add_header Cache-Control "public, max-age=3600";
             }
             
             # Special handling for p5.js sketches
