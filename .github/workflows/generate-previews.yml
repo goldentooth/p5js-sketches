@@ -45,13 +45,22 @@ jobs:
       - name: Check for changes
         id: changes
         run: |
-          if git diff --quiet; then
+          echo "=== Debugging file generation ==="
+          find sketches -name "preview.*" -type f || echo "No preview files found"
+          ls -la sketches/*/preview.* 2>/dev/null || echo "No preview files in sketches subdirs"
+          
+          echo "=== Git status ==="
+          git status --porcelain
+          
+          echo "=== Git diff ==="
+          git diff --name-only
+          
+          if git diff --quiet && git diff --cached --quiet; then
             echo "No preview changes detected"
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
             echo "Preview changes detected"
             echo "has_changes=true" >> $GITHUB_OUTPUT
-            git status --porcelain
           fi
 
       - name: Commit and push preview images
