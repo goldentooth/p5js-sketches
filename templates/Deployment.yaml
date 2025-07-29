@@ -83,7 +83,7 @@ spec:
           fi
           
           # Replace placeholder and generate final HTML
-          sed "s|{{SKETCH_CARDS}}|$sketch_cards|g" /tmp/gallery-template.html > /shared/sketches/index.html
+          sed "s|__SKETCH_CARDS__|$sketch_cards|g" /tmp/gallery-template.html > /shared/sketches/index.html
           
           echo "Gallery generated with $sketch_count sketches"
         securityContext:
