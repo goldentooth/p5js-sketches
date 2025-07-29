@@ -5,8 +5,8 @@ metadata:
   namespace: {{ .Values.spec.namespace }}
 spec:
   accessModes:
-    - ReadWriteMany
-  storageClassName: seaweedfs-storage-rwx
+    - ReadWriteOnce
+  storageClassName: local-path
   resources:
     requests:
       storage: 10Gi
