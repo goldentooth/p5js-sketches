@@ -100,6 +100,8 @@ spec:
         ports:
         - containerPort: 8080
           name: http
+        - containerPort: 8443
+          name: https
         securityContext:
           allowPrivilegeEscalation: {{ .Values.spec.security.allowPrivilegeEscalation }}
           readOnlyRootFilesystem: {{ .Values.spec.security.readOnlyRootFilesystem }}
@@ -115,6 +117,14 @@ spec:
           mountPath: /var/cache/nginx
         - name: nginx-run
           mountPath: /var/run
+        - name: tls-cert
+          mountPath: /etc/ssl/certs/tls.crt
+          subPath: tls.crt
+          readOnly: true
+        - name: tls-cert
+          mountPath: /etc/ssl/private/tls.key
+          subPath: tls.key
+          readOnly: true
         resources:
           requests:
             memory: {{ .Values.spec.server.resources.requests.memory }}
@@ -124,13 +134,13 @@ spec:
             cpu: {{ .Values.spec.server.resources.limits.cpu }}
         livenessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
@@ -147,3 +157,6 @@ spec:
         emptyDir: {}
       - name: tmp
         emptyDir: {}
+      - name: tls-cert
+        secret:
+          secretName: {{ .Values.spec.releaseName }}-tls-dns01-secret

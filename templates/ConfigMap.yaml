@@ -8,10 +8,35 @@ data:
     server {
         listen 8080;
         server_name _;
+        
+        # Health check endpoint (HTTP only, no redirect)
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+        
+        # Redirect all other traffic to HTTPS
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+    
+    server {
+        listen 8443 ssl;
+        http2 on;
+        server_name {{ index .Values.spec.service.annotations "external-dns.alpha.kubernetes.io/hostname" }};
         root /usr/share/nginx/html;
         index index.html;
         
-        # Health check endpoint
+        # SSL configuration
+        ssl_certificate /etc/ssl/certs/tls.crt;
+        ssl_certificate_key /etc/ssl/private/tls.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
+        ssl_prefer_server_ciphers off;
+        
+        # Health check endpoint (also available on HTTPS)
         location /health {
             access_log off;
             return 200 "healthy\n";
