@@ -46,7 +46,10 @@ jobs:
         id: changes
         run: |
           echo "=== Adding generated preview files ==="
-          git add sketches/*/preview.png sketches/*/preview.gif 2>/dev/null || echo "No preview files to add"
+          find sketches -name "preview.png" -o -name "preview.gif" | while read file; do
+            echo "Adding: $file"
+            git add "$file"
+          done
           
           echo "=== Git status after add ==="
           git status --porcelain
