@@ -34,7 +34,7 @@ function trainStep() {
     if (currentTrick === "simple") {
       // Same quadrant-based update
       const ETA = 0.0002;
-      const ETA2 = 0.0008;
+      const ETA2 = 0.008;
       if (y > yHat && x > 0) {
         predictedWeight += ETA;
         predictedBias += ETA2;
