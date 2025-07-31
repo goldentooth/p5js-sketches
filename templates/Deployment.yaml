@@ -13,7 +13,7 @@ spec:
   template:
     metadata:
       annotations:
-        rollme: "{{ randAlphaNum 5 | quote }}"
+        rollme: {{ randAlphaNum 5 | quote }}
       labels:
         app: {{ .Values.spec.releaseName }}
     spec:
