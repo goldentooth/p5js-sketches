@@ -1,12 +1,12 @@
 # P5.js Sketches Server
 
-A Kubernetes-native static file server for hosting p5.js sketches on the Goldentooth cluster, utilizing SeaweedFS distributed storage for high availability and scalability.
+A Kubernetes-native static file server for hosting p5.js sketches on the Goldentooth cluster, currently using local-path storage.
 
 ## Features
 
 - **Static File Server**: nginx optimized for ARM64 Pi hardware
-- **Storage**: SeaweedFS CSI ReadWriteMany persistent volume
-- **High Availability**: Multi-replica deployment with pod anti-affinity
+- **Storage**: local-path persistent volume (single-node)
+- **Single Instance**: Single-replica deployment (limited by ReadWriteOnce storage)
 - **Networking**: MetalLB LoadBalancer with external-dns integration
 - **Security**: Non-root container with read-only filesystem
 - **Automated Preview Generation**: GitHub Actions automatically captures preview images of sketches using headless browser automation
@@ -21,7 +21,7 @@ This application is deployed via ArgoCD as part of the Goldentooth GitOps workfl
 
 ### Storage Layout
 
-Sketches are stored in the shared SeaweedFS volume at `/srv/sketches/<sketch-name>/`:
+Sketches are stored in the local-path volume at `/srv/sketches/<sketch-name>/`:
 
 ```
 /srv/sketches/
@@ -54,13 +54,13 @@ See `PREVIEW_CAPTURE.md` for detailed technical documentation.
 Optimized for Raspberry Pi constraints:
 - Memory: 32Mi request / 64Mi limit
 - CPU: 50m request / 100m limit
-- Storage: 10Gi SeaweedFS volume (expandable)
+- Storage: 10Gi local-path volume
 
 ## Configuration
 
 Key configuration options in `values.yaml`:
 
-- `storage.size`: SeaweedFS volume size
+- `storage.size`: local-path volume size
 - `server.replicas`: Number of nginx replicas
 - `server.resources`: CPU/memory limits
 - `nginx.*`: nginx performance tuning

@@ -10,7 +10,7 @@ The p5js-sketches project is a Kubernetes-native static file server for hosting 
 
 ### Core Components
 - **Static File Server**: nginx optimized for ARM64 Raspberry Pi hardware
-- **Storage Backend**: SeaweedFS distributed storage with CSI ReadWriteMany volumes
+- **Storage Backend**: local-path storage with ReadWriteOnce volumes
 - **Preview Generation**: GitHub Actions workflow with Puppeteer browser automation
 - **GitOps Deployment**: Argo CD for continuous deployment from git repository
 - **Service Discovery**: MetalLB LoadBalancer with external-dns integration
@@ -18,7 +18,7 @@ The p5js-sketches project is a Kubernetes-native static file server for hosting 
 ### Key Technologies
 - **Kubernetes**: Container orchestration on Raspberry Pi cluster
 - **Helm**: Package management and templating
-- **SeaweedFS**: Distributed file system for shared storage
+- **local-path**: Single-node storage provisioner
 - **GitHub Actions**: CI/CD pipeline for automated preview capture
 - **Puppeteer**: Headless browser automation for canvas screenshots
 - **Argo CD**: GitOps continuous deployment
@@ -101,7 +101,8 @@ argocd app sync gitops-repo-p5js-sketches
 ### Resource Limits (Raspberry Pi Optimized)
 - **Memory**: 32Mi request / 64Mi limit per container
 - **CPU**: 50m request / 100m limit per container  
-- **Storage**: 10Gi SeaweedFS volume (expandable)
+- **Storage**: 10Gi local-path volume
+- **Replicas**: Single instance only (ReadWriteOnce limitation)
 
 ### Networking
 - **Service Type**: LoadBalancer (MetalLB)
@@ -117,7 +118,7 @@ argocd app sync gitops-repo-p5js-sketches
 
 This project is part of the larger Goldentooth infrastructure:
 - **Cluster Management**: Uses goldentooth CLI for operations
-- **Storage**: Integrates with SeaweedFS distributed storage
+- **Storage**: Uses local-path storage provisioner
 - **Networking**: Uses MetalLB and external-dns services
 - **Monitoring**: Prometheus metrics and Grafana dashboards
 - **GitOps**: Deployed via Argo CD with automated sync
@@ -135,8 +136,9 @@ This project is part of the larger Goldentooth infrastructure:
 - Review pod logs for nginx or git-sync errors
 
 ### Storage Issues
-- Check SeaweedFS cluster health via goldentooth CLI
+- Check local-path provisioner status on node
 - Verify PVC mount status in pods
 - Review volume permissions (should be 101:101 for nginx)
+- Note: Single-replica limitation due to ReadWriteOnce storage
 
 This project demonstrates cloud-native practices on edge hardware, combining creative coding with modern DevOps workflows.
