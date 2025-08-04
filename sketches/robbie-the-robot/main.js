@@ -5,7 +5,6 @@ let world;
 const GRID_W = 10;
 const GRID_H = 10;
 const CANS = 50;
-const REPLAY_INTERVAL = 5;
 
 let replaySim = null;
 let replayTick = 0;
@@ -22,8 +21,8 @@ function setup() {
     if (msg.type === 'status') {
       console.log(`Gen ${msg.gen} | Best: ${msg.bestScore} | Worst: ${msg.worstScore}`);
       bestBotGenome = msg.bestBot;
-      
-      if (msg.gen % REPLAY_INTERVAL != 0) {
+
+      if (replaySim && replayTick < replaySim.lifespan) {
         return;
       }
 
