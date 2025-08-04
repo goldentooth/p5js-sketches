@@ -43,13 +43,19 @@ jobs:
         run: npm ci
 
       - name: Generate previews and gallery
+        env:
+          FORCE_REGENERATE: true
         run: npm run build
 
       - name: Commit generated files
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add sketches/*/preview.* sketches/*/metadata.json sketches/index.html
+          
+          # Add files that exist (use find to handle missing files gracefully)
+          find sketches -name "preview.png" -o -name "preview.gif" -o -name "metadata.json" | xargs -r git add
+          git add sketches/index.html 2>/dev/null || echo "index.html not found"
+          
           if ! git diff --cached --quiet; then
             git commit -m "🖼️ Auto-generate gallery and preview files
             
