@@ -88,8 +88,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=sha,prefix={{branch}}-
+            type=sha,prefix=main-
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
@@ -103,15 +102,42 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Update values.yaml with SHA tag
+        run: |
+          # Extract the SHA tag (should be in format main-<sha>)
+          SHA_TAG=$(echo '${{ steps.meta.outputs.tags }}' | grep 'main-' | head -1 | cut -d':' -f2)
+          echo "Updating values.yaml with image tag: $SHA_TAG"
+          
+          # Update the image reference in values.yaml
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$SHA_TAG|" values.yaml
+          
+          # Commit the values.yaml change
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add values.yaml
+          
+          if ! git diff --cached --quiet; then
+            git commit -m "🚀 Update image tag to $SHA_TAG
+            
+            Updated values.yaml to reference specific SHA-tagged image
+            This eliminates the need for imagePullPolicy: Always
+            
+            Co-authored-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+            git push
+          else
+            echo "No changes to values.yaml"
+          fi
+
       - name: Generate deployment summary
         run: |
+          SHA_TAG=$(echo '${{ steps.meta.outputs.tags }}' | grep 'main-' | head -1 | cut -d':' -f2)
           echo "## 🚀 Container Image Built Successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$SHA_TAG\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
           echo '${{ steps.meta.outputs.tags }}' | sed 's/^/- `/' | sed 's/$/`/' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Ready for deployment to Kubernetes cluster!" >> $GITHUB_STEP_SUMMARY
+          echo "Argo CD will sync the updated values.yaml automatically!" >> $GITHUB_STEP_SUMMARY
