@@ -16,9 +16,42 @@ data:
             add_header Content-Type text/plain;
         }
         
-        # Redirect all other traffic to HTTPS
+        # Allow HTTP access when coming from MetalLB (HAProxy backend)
         location / {
-            return 301 https://$host$request_uri;
+            if ($host != "p5js-sketches.metallb.k8s.goldentooth.net") {
+                return 301 https://$host$request_uri;
+            }
+            
+            root /usr/share/nginx/html;
+            try_files $uri $uri/ =404;
+            
+            # Cache static assets with shorter duration for development
+            location ~* \.(js|css)$ {
+                expires 5m;
+                add_header Cache-Control "public, max-age=300";
+            }
+            
+            # Cache images longer since they change less frequently
+            location ~* \.(png|jpg|jpeg|gif|ico|svg)$ {
+                expires 1h;
+                add_header Cache-Control "public, max-age=3600";
+            }
+        }
+        
+        # Special handling for p5.js sketches (HTTP version)
+        location ~ ^/([^/]+)/?$ {
+            if ($host != "p5js-sketches.metallb.k8s.goldentooth.net") {
+                return 301 https://$host$request_uri;
+            }
+            try_files $uri $uri/ /$1/index.html =404;
+        }
+        
+        # Serve custom gallery index.html at root (HTTP version)
+        location = / {
+            if ($host != "p5js-sketches.metallb.k8s.goldentooth.net") {
+                return 301 https://$host$request_uri;
+            }
+            try_files /index.html =404;
         }
     }
     
