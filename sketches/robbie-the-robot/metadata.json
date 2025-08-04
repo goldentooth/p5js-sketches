@@ -1,0 +1,7 @@
+{
+  "title": "Robby GA with Worker",
+  "description": "Genetic algorithm simulation where robots learn to collect cans in a grid world using neural network evolution",
+  "isAnimated": true,
+  "captureDelay": 30000,
+  "lastUpdated": "2025-08-04T19:06:01.506Z"
+}
