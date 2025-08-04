@@ -3,26 +3,6 @@ spec:
   releaseName: p5js-sketches  
   namespace: p5js-sketches
   
-  # Server configuration
-  server:
-    image: 'ghcr.io/goldentooth/p5js-sketches:latest'
-    replicas: 1
-    resources:
-      limits:
-        memory: '64Mi'
-        cpu: '100m'
-      requests:
-        memory: '32Mi'
-        cpu: '50m'
-        
-  # Service configuration  
-  service:
-    type: 'LoadBalancer'
-    port: 80
-    annotations:
-      external-dns.alpha.kubernetes.io/hostname: 'p5js-sketches.metallb.k8s.goldentooth.net'
-      metallb.universe.tf/address-pool: 'primary'
-      
   # Security configuration
   security:
     runAsNonRoot: true
@@ -30,10 +10,30 @@ spec:
     runAsGroup: 101
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: true
+
+  # Service configuration  
+  service:
+    type: 'LoadBalancer'
+    port: 80
+    annotations:
+      external-dns.alpha.kubernetes.io/hostname: 'p5js-sketches.metallb.k8s.goldentooth.net'
+      metallb.universe.tf/address-pool: 'primary'
+
+# Server configuration
+server:
+  image: 'ghcr.io/goldentooth/p5js-sketches:latest'
+  replicas: 1
+  resources:
+    limits:
+      memory: '64Mi'
+      cpu: '100m'
+    requests:
+      memory: '32Mi'
+      cpu: '50m'
     
-  # Performance tuning for Pi hardware
-  nginx:
-    workerProcesses: 'auto'
-    workerConnections: 1024
-    keepaliveTimeout: 65
-    clientMaxBodySize: '1m'
+# Performance tuning for Pi hardware
+nginx:
+  workerProcesses: 'auto'
+  workerConnections: 1024
+  keepaliveTimeout: 65
+  clientMaxBodySize: '1m'
