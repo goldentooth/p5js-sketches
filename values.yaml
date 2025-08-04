@@ -26,6 +26,7 @@ spec:
     type: 'LoadBalancer'
     port: 80
     annotations:
+      external-dns.alpha.kubernetes.io/hostname: 'p5js-sketches.metallb.k8s.goldentooth.net'
       metallb.universe.tf/address-pool: 'primary'
       
   # Security configuration
