@@ -5,6 +5,11 @@ metadata:
   namespace: {{ .Values.spec.namespace }}
 data:
   default.conf: |
+    # Map to determine if request should be served or redirected
+    map $host $serve_content {
+        default 0;
+        "p5js-sketches.metallb.k8s.goldentooth.net" 1;
+    }
     server {
         listen 8080;
         server_name _;
@@ -16,42 +21,20 @@ data:
             add_header Content-Type text/plain;
         }
         
-        # Allow HTTP access when coming from MetalLB (HAProxy backend)
+        # Serve content for MetalLB requests, redirect others
         location / {
-            if ($host != "p5js-sketches.metallb.k8s.goldentooth.net") {
+            if ($serve_content = 0) {
                 return 301 https://p5js-sketches.services.k8s.goldentooth.net$request_uri;
             }
             
             root /usr/share/nginx/html;
-            try_files $uri $uri/ =404;
-            
-            # Cache static assets with shorter duration for development
-            location ~* \.(js|css)$ {
-                expires 5m;
-                add_header Cache-Control "public, max-age=300";
-            }
-            
-            # Cache images longer since they change less frequently
-            location ~* \.(png|jpg|jpeg|gif|ico|svg)$ {
-                expires 1h;
-                add_header Cache-Control "public, max-age=3600";
-            }
+            index index.html;
+            try_files $uri $uri/ @sketches;
         }
         
-        # Special handling for p5.js sketches (HTTP version)
-        location ~ ^/([^/]+)/?$ {
-            if ($host != "p5js-sketches.metallb.k8s.goldentooth.net") {
-                return 301 https://p5js-sketches.services.k8s.goldentooth.net$request_uri;
-            }
-            try_files $uri $uri/ /$1/index.html =404;
-        }
-        
-        # Serve custom gallery index.html at root (HTTP version)
-        location = / {
-            if ($host != "p5js-sketches.metallb.k8s.goldentooth.net") {
-                return 301 https://p5js-sketches.services.k8s.goldentooth.net$request_uri;
-            }
-            try_files /index.html =404;
+        # Handle sketch subdirectories and fallback to gallery
+        location @sketches {
+            try_files /$uri/index.html /index.html =404;
         }
     }
     
