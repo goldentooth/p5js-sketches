@@ -21,7 +21,7 @@ spec:
 
 # Server configuration
 server:
-  image: ghcr.io/goldentooth/p5js-sketches:main-82a57fa
+  image: ghcr.io/goldentooth/p5js-sketches:main-301f8e1
   replicas: 1
   resources:
     limits:
