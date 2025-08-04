@@ -3,7 +3,8 @@ FROM nginx:alpine
 # Copy pre-generated sketches and gallery
 COPY sketches /usr/share/nginx/html
 
-# Copy nginx configuration
+# Remove default nginx config and replace with ours
+RUN rm -f /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Fix file permissions for web serving
