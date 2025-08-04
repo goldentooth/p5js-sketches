@@ -10,6 +10,10 @@ on:
         description: 'Force regenerate all previews'
         required: false
         default: 'false'
+      capture_delay:
+        description: 'Capture delay in milliseconds (default: 10000)'
+        required: false
+        default: '10000'
 
 jobs:
   generate-previews:
@@ -38,8 +42,13 @@ jobs:
         run: npm ci
 
       - name: Generate preview images
+        env:
+          FORCE_REGENERATE: ${{ github.event.inputs.force_regenerate }}
+          CAPTURE_DELAY: ${{ github.event.inputs.capture_delay || '10000' }}
         run: |
           echo "Generating preview images for sketches..."
+          echo "Force regenerate: $FORCE_REGENERATE"
+          echo "Capture delay: $CAPTURE_DELAY ms"
           node capture-previews.js
           
       - name: Check for changes

@@ -7,13 +7,14 @@ const path = require('path');
 // Configuration
 const CONFIG = {
   sketches_dir: process.env.SKETCHES_DIR || './sketches',
-  capture_delay: 10000,        // Wait 10s for sketch to initialize
+  capture_delay: parseInt(process.env.CAPTURE_DELAY) || 10000,        // Wait 10s for sketch to initialize
   animation_duration: 3000,   // Record 3s of animation
   viewport: { width: 600, height: 600 },
   screenshot_options: {
     type: 'png',
     clip: { x: 0, y: 0, width: 400, height: 400 } // Crop to canvas size
-  }
+  },
+  force_regenerate: process.env.FORCE_REGENERATE === 'true' || process.argv.includes('--force')
 };
 
 async function captureSketchPreviews() {
@@ -91,6 +92,18 @@ async function captureSketchPreview(browser, sketchPath, sketchName) {
   try {
     await page.setViewport(CONFIG.viewport);
 
+    // Check if preview already exists and skip unless force regenerate
+    const pngPath = path.join(sketchPath, 'preview.png');
+    if (!CONFIG.force_regenerate) {
+      try {
+        await fs.access(pngPath);
+        console.log(`  Preview already exists for ${sketchName}, skipping`);
+        return;
+      } catch {
+        // File doesn't exist, continue with capture
+      }
+    }
+
     // Load the sketch
     const indexPath = path.join(sketchPath, 'index.html');
     const absolutePath = path.resolve(indexPath);
@@ -98,6 +111,7 @@ async function captureSketchPreview(browser, sketchPath, sketchName) {
     await page.goto(fileUrl, { waitUntil: 'networkidle0' });
 
     // Wait for sketch to initialize
+    console.log(`  Waiting ${CONFIG.capture_delay}ms for ${sketchName} to initialize...`);
     await page.waitForTimeout(CONFIG.capture_delay);
 
     // Check if canvas exists
@@ -113,7 +127,6 @@ async function captureSketchPreview(browser, sketchPath, sketchName) {
     }
 
     // Capture static PNG screenshot
-    const pngPath = path.join(sketchPath, 'preview.png');
     await page.screenshot({
       path: pngPath,
       type: 'png',
