@@ -19,7 +19,7 @@ data:
         # Allow HTTP access when coming from MetalLB (HAProxy backend)
         location / {
             if ($host != "p5js-sketches.metallb.k8s.goldentooth.net") {
-                return 301 https://$host$request_uri;
+                return 301 https://p5js-sketches.services.k8s.goldentooth.net$request_uri;
             }
             
             root /usr/share/nginx/html;
@@ -41,7 +41,7 @@ data:
         # Special handling for p5.js sketches (HTTP version)
         location ~ ^/([^/]+)/?$ {
             if ($host != "p5js-sketches.metallb.k8s.goldentooth.net") {
-                return 301 https://$host$request_uri;
+                return 301 https://p5js-sketches.services.k8s.goldentooth.net$request_uri;
             }
             try_files $uri $uri/ /$1/index.html =404;
         }
@@ -49,7 +49,7 @@ data:
         # Serve custom gallery index.html at root (HTTP version)
         location = / {
             if ($host != "p5js-sketches.metallb.k8s.goldentooth.net") {
-                return 301 https://$host$request_uri;
+                return 301 https://p5js-sketches.services.k8s.goldentooth.net$request_uri;
             }
             try_files /index.html =404;
         }
