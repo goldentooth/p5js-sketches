@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - 'sketches/**'
+      - 'templates/**'
+      - 'values.yaml'
+      - 'Chart.yaml'
       - 'capture-previews.js'
       - 'gallery-template.html'
       - 'package*.json'
