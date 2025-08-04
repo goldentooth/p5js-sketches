@@ -7,7 +7,7 @@ const path = require('path');
 // Configuration
 const CONFIG = {
   sketches_dir: process.env.SKETCHES_DIR || './sketches',
-  capture_delay: 2000,        // Wait 2s for sketch to initialize
+  capture_delay: 10000,        // Wait 10s for sketch to initialize
   animation_duration: 3000,   // Record 3s of animation
   viewport: { width: 600, height: 600 },
   screenshot_options: {
@@ -18,7 +18,7 @@ const CONFIG = {
 
 async function captureSketchPreviews() {
   console.log('Starting preview capture process...');
-  
+
   let browser;
   try {
     browser = await puppeteer.launch({
@@ -39,7 +39,7 @@ async function captureSketchPreviews() {
     for (const sketchPath of sketches) {
       const sketchName = path.basename(sketchPath);
       console.log(`Processing sketch: ${sketchName}`);
-      
+
       try {
         await captureSketchPreview(browser, sketchPath, sketchName);
         console.log(`✓ Captured preview for ${sketchName}`);
@@ -67,12 +67,12 @@ async function captureSketchPreviews() {
 async function getSketchDirectories() {
   const entries = await fs.readdir(CONFIG.sketches_dir, { withFileTypes: true });
   const sketches = [];
-  
+
   for (const entry of entries) {
     if (entry.isDirectory() && entry.name !== 'lost+found') {
       const sketchPath = path.join(CONFIG.sketches_dir, entry.name);
       const indexPath = path.join(sketchPath, 'index.html');
-      
+
       try {
         await fs.access(indexPath);
         sketches.push(sketchPath);
@@ -81,37 +81,37 @@ async function getSketchDirectories() {
       }
     }
   }
-  
+
   return sketches;
 }
 
 async function captureSketchPreview(browser, sketchPath, sketchName) {
   const page = await browser.newPage();
-  
+
   try {
     await page.setViewport(CONFIG.viewport);
-    
+
     // Load the sketch
     const indexPath = path.join(sketchPath, 'index.html');
     const absolutePath = path.resolve(indexPath);
     const fileUrl = `file://${absolutePath}`;
     await page.goto(fileUrl, { waitUntil: 'networkidle0' });
-    
+
     // Wait for sketch to initialize
     await page.waitForTimeout(CONFIG.capture_delay);
-    
+
     // Check if canvas exists
     const canvas = await page.$('canvas');
     if (!canvas) {
       throw new Error('No canvas element found');
     }
-    
+
     // Get canvas position and dimensions
     const canvasBox = await canvas.boundingBox();
     if (!canvasBox) {
       throw new Error('Canvas not visible');
     }
-    
+
     // Capture static PNG screenshot
     const pngPath = path.join(sketchPath, 'preview.png');
     await page.screenshot({
@@ -124,21 +124,21 @@ async function captureSketchPreview(browser, sketchPath, sketchName) {
         height: canvasBox.height
       }
     });
-    
+
     // Check if sketch is animated by monitoring canvas changes
     const isAnimated = await detectAnimation(page, canvas);
-    
+
     if (isAnimated) {
       console.log(`  Detected animation in ${sketchName}, capturing GIF...`);
       await captureAnimatedGIF(page, canvas, path.join(sketchPath, 'preview.gif'));
     }
-    
+
     // Set proper ownership for nginx
     await setFileOwnership(pngPath);
     if (isAnimated) {
       await setFileOwnership(path.join(sketchPath, 'preview.gif'));
     }
-    
+
   } finally {
     await page.close();
   }
@@ -149,7 +149,7 @@ async function detectAnimation(page, canvas) {
   const screenshot1 = await canvas.screenshot({ type: 'png' });
   await page.waitForTimeout(500);
   const screenshot2 = await canvas.screenshot({ type: 'png' });
-  
+
   // Simple comparison - if bytes differ, likely animated
   return !screenshot1.equals(screenshot2);
 }
@@ -160,13 +160,13 @@ async function captureAnimatedGIF(page, canvas, gifPath) {
   const frames = [];
   const frameCount = 30; // 30 frames over 3 seconds
   const frameDelay = CONFIG.animation_duration / frameCount;
-  
+
   for (let i = 0; i < frameCount; i++) {
     const frame = await canvas.screenshot({ type: 'png' });
     frames.push(frame);
     await page.waitForTimeout(frameDelay);
   }
-  
+
   // For now, we'll use the first frame as a fallback
   // In a full implementation, you'd use a library like 'gif-encoder' or 'gifencoder'
   await fs.writeFile(gifPath.replace('.gif', '_frame0.png'), frames[0]);
@@ -180,7 +180,7 @@ async function setFileOwnership(filePath) {
     console.log(`Skipping chown for ${filePath} (not running as root)`);
     return;
   }
-  
+
   try {
     const { spawn } = require('child_process');
     return new Promise((resolve, reject) => {
