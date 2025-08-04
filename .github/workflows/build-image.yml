@@ -53,7 +53,7 @@ jobs:
           git config --local user.name "GitHub Action"
           
           # Add files that exist (use find to handle missing files gracefully)
-          find sketches -name "preview.png" -o -name "preview.gif" -o -name "metadata.json" | xargs -r git add
+          find sketches -name "preview.png" -o -name "preview.gif" | xargs -r git add
           git add sketches/index.html 2>/dev/null || echo "index.html not found"
           
           if ! git diff --cached --quiet; then

@@ -92,18 +92,28 @@ async function generateGallery() {
     const content = document.createElement('div');
     content.className = 'sketch-content';
     
-    // Load metadata if available
+    // Load metadata from HTML meta tags
     let sketchTitle = sketchName;
     let sketchDescription = '';
     
-    const metadataPath = path.join(sketchDir, 'metadata.json');
     try {
-      const metadataContent = await fs.readFile(metadataPath, 'utf8');
-      const metadata = JSON.parse(metadataContent);
-      sketchTitle = metadata.title || sketchName;
-      sketchDescription = metadata.description || '';
-    } catch {
-      // No metadata file or parse error
+      const htmlContent = await fs.readFile(indexPath, 'utf8');
+      const htmlDom = new JSDOM(htmlContent);
+      const htmlDoc = htmlDom.window.document;
+      
+      // Get title from <title> tag or fallback to directory name
+      const titleElement = htmlDoc.querySelector('title');
+      if (titleElement && titleElement.textContent.trim()) {
+        sketchTitle = titleElement.textContent.trim();
+      }
+      
+      // Get description from meta tag
+      const descElement = htmlDoc.querySelector('meta[name="description"]');
+      if (descElement && descElement.content) {
+        sketchDescription = descElement.content;
+      }
+    } catch (error) {
+      console.warn(`Could not read metadata from ${indexPath}:`, error.message);
     }
     
     // Create title

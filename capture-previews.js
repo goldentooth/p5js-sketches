@@ -156,19 +156,8 @@ async function captureSketchPreview(browser, sketchPath, sketchName) {
       await captureAnimatedGIF(page, canvas, path.join(sketchPath, 'preview.gif'));
     }
 
-    // Save metadata to JSON file for gallery template
-    const metadataPath = path.join(sketchPath, 'metadata.json');
-    await fs.writeFile(metadataPath, JSON.stringify({
-      title: await page.title(),
-      description: metadata.description,
-      isAnimated: isAnimated,
-      captureDelay: captureDelay,
-      lastUpdated: new Date().toISOString()
-    }, null, 2));
-
     // Set proper ownership for nginx
     await setFileOwnership(pngPath);
-    await setFileOwnership(metadataPath);
     if (isAnimated) {
       await setFileOwnership(path.join(sketchPath, 'preview.gif'));
     }
