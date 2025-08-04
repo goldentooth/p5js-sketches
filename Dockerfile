@@ -3,8 +3,9 @@ FROM nginx:alpine
 # Copy pre-generated sketches and gallery
 COPY sketches /usr/share/nginx/html
 
-# Remove default nginx config and replace with ours
-RUN rm -f /etc/nginx/conf.d/default.conf
+# Remove default nginx config and entrypoint scripts that might interfere
+RUN rm -f /etc/nginx/conf.d/default.conf && \
+    rm -rf /docker-entrypoint.d/*
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Fix file permissions for web serving
