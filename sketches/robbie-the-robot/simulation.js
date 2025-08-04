@@ -63,7 +63,7 @@ class Simulation {
         if (this.world.hasRight(idx)) { choices.push('RIGHT'); }
         if (this.world.hasUp(idx)) { choices.push('UP'); }
         if (this.world.hasDown(idx)) { choices.push('DOWN'); }
-        return this.act(choices[Math.floor(Math.random() * choices.length)]);
+        return this.act(random(choices));
       case 'TAKE': {
         let idx = this.world.idx(this.x, this.y);
         if (this.world.hasCan(idx)) {
