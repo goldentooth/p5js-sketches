@@ -110,9 +110,19 @@ async function captureSketchPreview(browser, sketchPath, sketchName) {
     const fileUrl = `file://${absolutePath}`;
     await page.goto(fileUrl, { waitUntil: 'networkidle0' });
 
+    // Read metadata from HTML for per-sketch configuration
+    const metadata = await page.evaluate(() => {
+      const description = document.querySelector('meta[name="description"]')?.content || '';
+      const captureDelay = document.querySelector('meta[name="capture-delay"]')?.content;
+      return { description, captureDelay };
+    });
+
+    // Use per-sketch capture delay if specified, otherwise use global config
+    const captureDelay = metadata.captureDelay ? parseInt(metadata.captureDelay) : CONFIG.capture_delay;
+    
     // Wait for sketch to initialize
-    console.log(`  Waiting ${CONFIG.capture_delay}ms for ${sketchName} to initialize...`);
-    await page.waitForTimeout(CONFIG.capture_delay);
+    console.log(`  Waiting ${captureDelay}ms for ${sketchName} to initialize...`);
+    await page.waitForTimeout(captureDelay);
 
     // Check if canvas exists
     const canvas = await page.$('canvas');
@@ -146,8 +156,19 @@ async function captureSketchPreview(browser, sketchPath, sketchName) {
       await captureAnimatedGIF(page, canvas, path.join(sketchPath, 'preview.gif'));
     }
 
+    // Save metadata to JSON file for gallery template
+    const metadataPath = path.join(sketchPath, 'metadata.json');
+    await fs.writeFile(metadataPath, JSON.stringify({
+      title: await page.title(),
+      description: metadata.description,
+      isAnimated: isAnimated,
+      captureDelay: captureDelay,
+      lastUpdated: new Date().toISOString()
+    }, null, 2));
+
     // Set proper ownership for nginx
     await setFileOwnership(pngPath);
+    await setFileOwnership(metadataPath);
     if (isAnimated) {
       await setFileOwnership(path.join(sketchPath, 'preview.gif'));
     }

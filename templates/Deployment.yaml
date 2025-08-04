@@ -6,332 +6,46 @@ metadata:
   labels:
     app: {{ .Values.spec.releaseName }}
 spec:
-  replicas: {{ .Values.spec.server.replicas }}
+  replicas: {{ .Values.server.replicas }}
   selector:
     matchLabels:
       app: {{ .Values.spec.releaseName }}
   template:
     metadata:
-      annotations:
-        rollme: {{ randAlphaNum 5 | quote }}
       labels:
         app: {{ .Values.spec.releaseName }}
     spec:
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchLabels:
-                  app: {{ .Values.spec.releaseName }}
-              topologyKey: kubernetes.io/hostname
-      serviceAccountName: {{ .Values.spec.releaseName }}-controller
       securityContext:
         runAsNonRoot: {{ .Values.spec.security.runAsNonRoot }}
         runAsUser: {{ .Values.spec.security.runAsUser }}
         runAsGroup: {{ .Values.spec.security.runAsGroup }}
-      initContainers:
-      # Sketch sync - syncs sketches from git repository to shared storage
-      - name: sketch-sync
-        image: registry.k8s.io/git-sync/git-sync:v4.2.1
-        env:
-        - name: GITSYNC_REPO
-          value: "https://github.com/goldentooth/p5js-sketches.git"
-        - name: GITSYNC_BRANCH
-          value: "main"
-        - name: GITSYNC_ROOT
-          value: "/tmp/git"
-        - name: GITSYNC_DEST
-          value: "repo"
-        - name: GITSYNC_ONE_TIME
-          value: "true"
-        - name: GITSYNC_LINK
-          value: "repo"
-        command:
-        - /bin/sh
-        - -c
-        - |
-          set -e
-          echo "Syncing sketches from repository..."
-          
-          # Run git-sync once to get the repository
-          /git-sync &
-          SYNC_PID=$!
-          
-          # Wait for sync to complete (check for repo directory)
-          timeout=30
-          while [ $timeout -gt 0 ] && [ ! -d "/tmp/git/repo/sketches" ]; do
-            echo "Waiting for git-sync to complete..."
-            sleep 1
-            timeout=$((timeout - 1))
-          done
-          
-          # Kill git-sync process
-          kill $SYNC_PID 2>/dev/null || true
-          
-          # Create shared sketches directory and copy sketches
-          mkdir -p /shared/sketches
-          
-          if [ -d "/tmp/git/repo/sketches" ]; then
-            cp -r /tmp/git/repo/sketches/* /shared/sketches/
-            echo "Successfully copied sketches to shared storage"
-            ls -la /shared/sketches/
-          else
-            echo "No sketches directory found in repository"
-          fi
-        securityContext:
-          allowPrivilegeEscalation: {{ .Values.spec.security.allowPrivilegeEscalation }}
-          readOnlyRootFilesystem: false
-          runAsNonRoot: false
-          runAsUser: 0
-        volumeMounts:
-        - name: sketches-storage
-          mountPath: /shared/sketches
-        - name: tmp
-          mountPath: /tmp
-      # Gallery generator - creates index.html from available sketches
-      - name: gallery-generator
-        image: alpine:3.19
-        command:
-        - /bin/sh
-        - -c
-        - |
-          set -e
-          echo "Generating gallery index page..."
-          
-          # Create gallery template directly
-          cat > /tmp/gallery-template.html << 'TEMPLATE_EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>P5.js Sketches Gallery</title>
-              <style>
-                  body {
-                      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                      max-width: 1200px;
-                      margin: 0 auto;
-                      padding: 2rem;
-                      background: #1a1a1a;
-                      color: #e0e0e0;
-                  }
-                  h1 {
-                      text-align: center;
-                      color: #ff6b6b;
-                      margin-bottom: 3rem;
-                  }
-                  .gallery {
-                      display: grid;
-                      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                      gap: 2rem;
-                  }
-                  .sketch-card {
-                      background: #2a2a2a;
-                      border-radius: 8px;
-                      overflow: hidden;
-                      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-                      transition: transform 0.2s ease;
-                  }
-                  .sketch-card:hover {
-                      transform: translateY(-2px);
-                  }
-                  .sketch-preview {
-                      position: relative;
-                      width: 100%;
-                      height: 200px;
-                      background: #1a1a1a;
-                      overflow: hidden;
-                      margin-bottom: 1rem;
-                  }
-                  .sketch-preview img {
-                      width: 100%;
-                      height: 100%;
-                      object-fit: cover;
-                      transition: opacity 0.3s ease;
-                  }
-                  .sketch-preview .preview-gif {
-                      position: absolute;
-                      top: 0;
-                      left: 0;
-                      opacity: 0;
-                      pointer-events: none;
-                  }
-                  .sketch-card:hover .preview-gif {
-                      opacity: 1;
-                  }
-                  .preview-placeholder {
-                      display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      width: 100%;
-                      height: 100%;
-                      background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
-                      color: white;
-                      font-size: 3rem;
-                      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                  }
-                  .sketch-content {
-                      padding: 1.5rem;
-                  }
-                  .sketch-title {
-                      font-size: 1.2rem;
-                      font-weight: 600;
-                      margin-bottom: 0.5rem;
-                      color: #4ecdc4;
-                  }
-                  .sketch-link {
-                      display: inline-block;
-                      background: #ff6b6b;
-                      color: white;
-                      text-decoration: none;
-                      padding: 0.5rem 1rem;
-                      border-radius: 4px;
-                      font-weight: 500;
-                      transition: background 0.2s ease;
-                  }
-                  .sketch-link:hover {
-                      background: #ff5252;
-                  }
-                  .no-sketches {
-                      text-align: center;
-                      color: #888;
-                      font-style: italic;
-                  }
-                  .footer {
-                      text-align: center;
-                      margin-top: 3rem;
-                      padding-top: 2rem;
-                      border-top: 1px solid #333;
-                      color: #666;
-                  }
-              </style>
-          </head>
-          <body>
-              <h1>🎨 P5.js Sketches Gallery</h1>
-              <div class="gallery" id="gallery">
-                  __SKETCH_CARDS__
-              </div>
-              <div class="footer">
-                  <p>Powered by Goldentooth Kubernetes Cluster</p>
-              </div>
-          </body>
-          </html>
-          TEMPLATE_EOF
-          
-          # Build sketch cards HTML from shared storage
-          sketch_cards=""
-          sketch_count=0
-          
-          if [ -d "/shared/sketches" ]; then
-            for sketch_dir in /shared/sketches/*/; do
-              if [ -d "$sketch_dir" ]; then
-                sketch_name=$(basename "$sketch_dir")
-                if [ "$sketch_name" != "lost+found" ] && [ -f "$sketch_dir/index.html" ]; then
-                  sketch_count=$((sketch_count + 1))
-                  
-                  # Check for preview images
-                  preview_content=""
-                  if [ -f "$sketch_dir/preview.png" ]; then
-                    if [ -f "$sketch_dir/preview.gif" ]; then
-                      preview_content="<div class=\"sketch-preview\"><img src=\"/$sketch_name/preview.png\" alt=\"$sketch_name preview\" class=\"preview-png\"><img src=\"/$sketch_name/preview.gif\" alt=\"$sketch_name animation\" class=\"preview-gif\"></div>"
-                    else
-                      preview_content="<div class=\"sketch-preview\"><img src=\"/$sketch_name/preview.png\" alt=\"$sketch_name preview\"></div>"
-                    fi
-                  elif [ -f "$sketch_dir/preview.gif" ]; then
-                    preview_content="<div class=\"sketch-preview\"><img src=\"/$sketch_name/preview.gif\" alt=\"$sketch_name animation\"></div>"
-                  else
-                    first_char=$(echo "$sketch_name" | cut -c1 | tr '[:lower:]' '[:upper:]')
-                    preview_content="<div class=\"sketch-preview\"><div class=\"preview-placeholder\">$first_char</div></div>"
-                  fi
-                  
-                  sketch_cards="$sketch_cards<div class=\"sketch-card\">$preview_content<div class=\"sketch-content\"><div class=\"sketch-title\">$sketch_name</div><a href=\"/$sketch_name/\" class=\"sketch-link\">View Sketch</a></div></div>"
-                fi
-              fi
-            done
-          fi
-          
-          # If no sketches, show message
-          if [ $sketch_count -eq 0 ]; then
-            sketch_cards='<div class="no-sketches">No sketches available yet. Deploy some sketch repositories to see them here!</div>'
-          fi
-          
-          # Replace placeholder and generate final HTML
-          sed "s|__SKETCH_CARDS__|$sketch_cards|g" /tmp/gallery-template.html > /shared/sketches/index.html
-          
-          echo "Gallery generated with $sketch_count sketches"
-        securityContext:
-          allowPrivilegeEscalation: {{ .Values.spec.security.allowPrivilegeEscalation }}
-          readOnlyRootFilesystem: false
-          runAsNonRoot: false
-          runAsUser: 0
-        volumeMounts:
-        - name: sketches-storage
-          mountPath: /shared/sketches
       containers:
       - name: nginx
-        image: {{ .Values.spec.server.image }}
+        image: {{ .Values.server.image }}
         ports:
-        - containerPort: 8080
+        - containerPort: 80
           name: http
-        - containerPort: 8443
-          name: https
+        resources:
+          limits:
+            memory: {{ .Values.server.resources.limits.memory }}
+            cpu: {{ .Values.server.resources.limits.cpu }}
+          requests:
+            memory: {{ .Values.server.resources.requests.memory }}
+            cpu: {{ .Values.server.resources.requests.cpu }}
         securityContext:
           allowPrivilegeEscalation: {{ .Values.spec.security.allowPrivilegeEscalation }}
           readOnlyRootFilesystem: {{ .Values.spec.security.readOnlyRootFilesystem }}
-        volumeMounts:
-        - name: sketches-storage
-          mountPath: /usr/share/nginx/html
-          readOnly: true
-        - name: nginx-config
-          mountPath: /etc/nginx/conf.d/default.conf
-          subPath: default.conf
-          readOnly: true
-        - name: nginx-cache
-          mountPath: /var/cache/nginx
-        - name: nginx-run
-          mountPath: /var/run
-        - name: tls-cert
-          mountPath: /etc/ssl/certs/tls.crt
-          subPath: tls.crt
-          readOnly: true
-        - name: tls-cert
-          mountPath: /etc/ssl/private/tls.key
-          subPath: tls.key
-          readOnly: true
-        resources:
-          requests:
-            memory: {{ .Values.spec.server.resources.requests.memory }}
-            cpu: {{ .Values.spec.server.resources.requests.cpu }}
-          limits:
-            memory: {{ .Values.spec.server.resources.limits.memory }}
-            cpu: {{ .Values.spec.server.resources.limits.cpu }}
+          runAsNonRoot: {{ .Values.spec.security.runAsNonRoot }}
+          runAsUser: {{ .Values.spec.security.runAsUser }}
         livenessProbe:
           httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 30
         readinessProbe:
           httpGet:
-            path: /health
-            port: 8080
+            path: /
+            port: http
           initialDelaySeconds: 5
-          periodSeconds: 5
-      volumes:
-      - name: sketches-storage
-        persistentVolumeClaim:
-          claimName: sketches-shared-storage
-      - name: nginx-config
-        configMap:
-          name: nginx-config
-      - name: nginx-cache
-        emptyDir: {}
-      - name: nginx-run
-        emptyDir: {}
-      - name: tmp
-        emptyDir: {}
-      - name: tls-cert
-        secret:
-          secretName: {{ .Values.spec.releaseName }}-tls-dns01-secret
+          periodSeconds: 10

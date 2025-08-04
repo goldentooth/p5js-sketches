@@ -5,10 +5,13 @@
   "main": "capture-previews.js",
   "scripts": {
     "capture": "node capture-previews.js",
+    "gallery": "node generate-gallery.js",
+    "build": "npm run capture && npm run gallery",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "puppeteer": "^21.5.0"
+    "puppeteer": "^21.5.0",
+    "jsdom": "^23.0.0"
   },
   "engines": {
     "node": ">=16"

@@ -1,0 +1,22 @@
+# Git
+.git
+.gitignore
+
+# Node modules will be installed in container
+node_modules
+
+# Documentation
+README.md
+*.md
+
+# CI/CD
+.github
+
+# Kubernetes
+templates/
+values.yaml
+Chart.yaml
+
+# Development files
+.DS_Store
+*.log

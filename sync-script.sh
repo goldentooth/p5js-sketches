@@ -101,7 +101,21 @@ for sketch_dir in /srv/sketches/*/; do
         preview_content="<div class=\"sketch-preview\"><div class=\"preview-placeholder\">$first_char</div></div>"
       fi
       
-      sketch_cards="$sketch_cards<div class=\"sketch-card\">$preview_content<div class=\"sketch-content\"><div class=\"sketch-title\">$sketch_name</div><a href=\"/$sketch_name/\" class=\"sketch-link\">View Sketch</a></div></div>"
+      # Extract title and description from metadata.json if available
+      sketch_title="$sketch_name"
+      sketch_description=""
+      if [ -f "$sketch_dir/metadata.json" ]; then
+        sketch_title=$(jq -r '.title // "'$sketch_name'"' "$sketch_dir/metadata.json" 2>/dev/null || echo "$sketch_name")
+        sketch_description=$(jq -r '.description // ""' "$sketch_dir/metadata.json" 2>/dev/null || echo "")
+      fi
+      
+      # Build description HTML if available
+      description_html=""
+      if [ -n "$sketch_description" ]; then
+        description_html="<div class=\"sketch-description\">$sketch_description</div>"
+      fi
+      
+      sketch_cards="$sketch_cards<div class=\"sketch-card\">$preview_content<div class=\"sketch-content\"><div class=\"sketch-title\">$sketch_title</div>$description_html<a href=\"/$sketch_name/\" class=\"sketch-link\">View Sketch</a></div></div>"
     fi
   fi
 done
@@ -112,7 +126,7 @@ if [ $sketch_count -eq 0 ]; then
 fi
 
 # Replace placeholder and generate final HTML
-sed "s|{{SKETCH_CARDS}}|$sketch_cards|g" /tmp/gallery-template.html > /srv/sketches/index.html
+sed "s|__SKETCH_CARDS__|$sketch_cards|g" /tmp/gallery-template.html > /srv/sketches/index.html
 
 # Set ownership for nginx
 chown 101:101 /srv/sketches/index.html
