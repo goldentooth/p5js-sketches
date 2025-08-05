@@ -1,118 +1,170 @@
-<!DOCTYPE html><html lang="en"><head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P5.js Sketches Gallery</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-            background: #1a1a1a;
-            color: #e0e0e0;
-        }
-        h1 {
-            text-align: center;
-            color: #ff6b6b;
-            margin-bottom: 3rem;
-        }
-        .gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-        .sketch-card {
-            background: #2a2a2a;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            transition: transform 0.2s ease;
-        }
-        .sketch-card:hover {
-            transform: translateY(-2px);
-        }
-        .sketch-preview {
-            position: relative;
-            width: 100%;
-            height: 200px;
-            background: #1a1a1a;
-            overflow: hidden;
-            margin-bottom: 1rem;
-        }
-        .sketch-preview img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: opacity 0.3s ease;
-        }
-        .sketch-preview .preview-gif {
-            position: absolute;
-            top: 0;
-            left: 0;
-            opacity: 0;
-            pointer-events: none;
-        }
-        .sketch-card:hover .preview-gif {
-            opacity: 1;
-        }
-        .preview-placeholder {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
-            color: white;
-            font-size: 3rem;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-        .sketch-content {
-            padding: 1.5rem;
-        }
-        .sketch-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: #4ecdc4;
-        }
-        .sketch-description {
-            font-size: 0.9rem;
-            color: #b0b0b0;
-            margin-bottom: 1rem;
-            line-height: 1.4;
-        }
-        .sketch-link {
-            display: inline-block;
-            background: #ff6b6b;
-            color: white;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            font-weight: 500;
-            transition: background 0.2s ease;
-        }
-        .sketch-link:hover {
-            background: #ff5252;
-        }
-        .no-sketches {
-            text-align: center;
-            color: #888;
-            font-style: italic;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 3rem;
-            padding-top: 2rem;
-            border-top: 1px solid #333;
-            color: #666;
-        }
-    </style>
-</head>
-<body>
-    <h1>🎨 P5.js Sketches Gallery</h1>
-    <div class="gallery" id="gallery"><div class="sketch-card"><div class="sketch-preview"><img src="/linear-regression/preview.png" alt="linear-regression preview" class="preview-png"></div><div class="sketch-content"><div class="sketch-title">Linear Regression Playground</div><div class="sketch-description">Interactive playground for experimenting with linear regression algorithms</div><a href="/linear-regression/" class="sketch-link">View Sketch</a></div></div><div class="sketch-card"><div class="sketch-preview"><img src="/robbie-the-robot/preview.png" alt="robbie-the-robot preview" class="preview-png"></div><div class="sketch-content"><div class="sketch-title">Robbie the Robot</div><div class="sketch-description">Genetic algorithm simulation where robots learn to collect cans in a grid world</div><a href="/robbie-the-robot/" class="sketch-link">View Sketch</a></div></div></div>
-    <div class="footer">
-        <p>Powered by Goldentooth Kubernetes Cluster</p>
-    </div>
+<!DOCTYPE html>
+<html lang="en">
 
-</body></html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P5.js Sketches Gallery</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      background: #1a1a1a;
+      color: #e0e0e0;
+    }
+
+    h1 {
+      text-align: center;
+      color: #ff6b6b;
+      margin-bottom: 3rem;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 2rem;
+    }
+
+    .sketch-card {
+      background: #2a2a2a;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s ease;
+    }
+
+    .sketch-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .sketch-preview {
+      position: relative;
+      width: 100%;
+      height: 200px;
+      background: #1a1a1a;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+
+    .sketch-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: opacity 0.3s ease;
+    }
+
+    .sketch-preview .preview-gif {
+      position: absolute;
+      top: 0;
+      left: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .sketch-card:hover .preview-gif {
+      opacity: 1;
+    }
+
+    .preview-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+      color: white;
+      font-size: 3rem;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .sketch-content {
+      padding: 1.5rem;
+    }
+
+    .sketch-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #4ecdc4;
+    }
+
+    .sketch-description {
+      font-size: 0.9rem;
+      color: #b0b0b0;
+      margin-bottom: 1rem;
+      line-height: 1.4;
+    }
+
+    .sketch-link {
+      display: inline-block;
+      background: #ff6b6b;
+      color: white;
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-weight: 500;
+      transition: background 0.2s ease;
+    }
+
+    .sketch-link:hover {
+      background: #ff5252;
+    }
+
+    .no-sketches {
+      text-align: center;
+      color: #888;
+      font-style: italic;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid #333;
+      color: #666;
+    }
+
+    .footer a {
+      color: #4ecdc4;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .footer a:hover {
+      color: #ff6b6b;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>🎨 P5.js Sketches Gallery</h1>
+  <div class="gallery" id="gallery">
+    <div class="sketch-card">
+      <div class="sketch-preview"><img src="/linear-regression/preview.png" alt="linear-regression preview"
+          class="preview-png"></div>
+      <div class="sketch-content">
+        <div class="sketch-title">Linear Regression Playground</div>
+        <div class="sketch-description">Interactive playground for experimenting with linear regression algorithms</div>
+        <a href="/linear-regression/" class="sketch-link">View Sketch</a>
+      </div>
+    </div>
+    <div class="sketch-card">
+      <div class="sketch-preview"><img src="/robbie-the-robot/preview.png" alt="robbie-the-robot preview"
+          class="preview-png"></div>
+      <div class="sketch-content">
+        <div class="sketch-title">Robby GA with Worker</div>
+        <div class="sketch-description">Genetic algorithm simulation where robots learn to collect cans in a grid world
+          using neural network evolution</div><a href="/robbie-the-robot/" class="sketch-link">View Sketch</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <p>Powered by <a href="https://clog.goldentooth.net/" target="_blank" rel="noopener noreferrer">Goldentooth</a></p>
+  </div>
+
+</body>
+
+</html>
