@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Interactive 1D cellular automata visualization showing emergent patterns from simple rules">
+  <meta name="author" content="Goldentooth Project">
+
+  <title>1D Cellular Automata</title>
+
+  <!-- Icon for browser tab -->
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%236366f1'/></svg>">
+
+  <link rel="stylesheet" type="text/css" href="style.css">
+
+  <script src="libraries/p5.min.js"></script>
+  <script src="libraries/p5.sound.min.js"></script>
+</head>
+
+<body>
+  <header class="sketch-header">
+    <h1>1D Cellular Automata</h1>
+    <p class="sketch-description">
+      Explore the fascinating world of 1D cellular automata, where simple local rules generate complex emergent
+      patterns
+      over time. Each row represents a generation, with cells evolving based on their neighbors according to the
+      selected rule. From chaotic randomness to structured fractals, witness how complexity can arise from simplicity.
+    </p>
+    <div class="controls-info">
+      <strong>How to use:</strong> Enter a rule number (0-255) in the input field and click "Set Rule" or press Enter.
+      Each rule number corresponds to a different set of local transition rules.
+      <br><br>
+      <strong>Try these interesting rules:</strong>
+      <ul style="margin: 0.5rem 0; padding-left: 1rem;">
+        <li><strong>Rule 30:</strong> Chaotic randomness (Class 3)</li>
+        <li><strong>Rule 90:</strong> Sierpinski triangle / Pascal's triangle mod 2</li>
+        <li><strong>Rule 110:</strong> Complex computation (Turing complete, Class 4)</li>
+        <li><strong>Rule 54:</strong> Universal computation candidate (Class 4)</li>
+        <li><strong>Rule 60:</strong> Sierpinski triangle patterns</li>
+        <li><strong>Rule 18:</strong> Beautiful nested triangular patterns</li>
+        <li><strong>Rule 126:</strong> Dense carpet-like patterns</li>
+        <li><strong>Rule 150:</strong> Clean geometric XOR triangles</li>
+        <li><strong>Rule 184:</strong> Traffic flow model</li>
+      </ul>
+    </div>
+  </header>
+
+  <main id="sketch-container">
+    <script src="sketch.js"></script>
+  </main>
+
+  <section class="controls-section">
+    <div class="controls-container">
+      <label for="rule-input">Rule Number (0-255):</label>
+      <input type="number" id="rule-input" min="0" max="255" value="30">
+      <button id="set-rule-button">Set Rule</button>
+      
+      <label for="detail-select">Detail Level:</label>
+      <select id="detail-select">
+        <option value="low">Low (100 cols, 8px cells)</option>
+        <option value="medium">Medium (200 cols, 4px cells)</option>
+        <option value="high">High (400 cols, 2px cells)</option>
+        <option value="ultra" selected>Ultra (800 cols, 1px cells)</option>
+      </select>
+    </div>
+  </section>
+
+  <footer class="sketch-footer">
+    <div class="technical-details">
+      <h3>Technical Details</h3>
+      <ul>
+        <li><strong>Grid Size:</strong> 200 cells wide, evolving over multiple generations</li>
+        <li><strong>Rule System:</strong> Wolfram's elementary cellular automata (256 possible rules)</li>
+        <li><strong>Initial Condition:</strong> Single active cell in the center of the first row</li>
+        <li><strong>Neighborhood:</strong> Each cell considers itself and its two immediate neighbors</li>
+        <li><strong>Implementation:</strong> Uses Web Workers for non-blocking computation</li>
+        <li><strong>Visualization:</strong> Black cells represent active states, white cells represent inactive states
+        </li>
+      </ul>
+    </div>
+    <div class="generation-info">
+      <h3>About Cellular Automata</h3>
+      <p>
+        Cellular automata are discrete mathematical models that demonstrate how complex patterns can emerge from simple
+        rules. Stephen Wolfram's study of elementary cellular automata revealed four classes of behavior: fixed points,
+        periodic patterns, chaotic behavior, and complex localized structures. Rule 110 is even Turing complete!
+      </p>
+    </div>
+  </footer>
+</body>
+
+</html>

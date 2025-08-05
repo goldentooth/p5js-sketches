@@ -1,0 +1,185 @@
+:root {
+  --bg-color: #f8f9fa;
+  --text-color: #212529;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #212529;
+    --text-color: #f8f9fa;
+  }
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+#sketch-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 0;
+}
+
+canvas {
+  display: block;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.sketch-header {
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.sketch-header h1 {
+  margin: 0 0 1rem 0;
+  font-size: 2.5rem;
+  font-weight: 600;
+}
+
+.sketch-description {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  color: var(--text-color);
+  opacity: 0.9;
+}
+
+.controls-info {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.sketch-footer {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.technical-details h3, .generation-info h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.3rem;
+  color: var(--text-color);
+}
+
+.technical-details ul {
+  list-style: none;
+  padding: 0;
+}
+
+.technical-details li {
+  margin-bottom: 0.5rem;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.technical-details li::before {
+  content: '•';
+  color: #6366f1;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
+.generation-info {
+  margin-top: 2rem;
+}
+
+.generation-info p {
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+.controls-section {
+  background: rgba(99, 102, 241, 0.05);
+  border-top: 1px solid rgba(99, 102, 241, 0.1);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+  padding: 2rem 0;
+}
+
+.controls-container {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0 1rem;
+}
+
+.controls-container label {
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.controls-container input, .controls-container select {
+  padding: 0.5rem 0.75rem;
+  border: 2px solid rgba(99, 102, 241, 0.2);
+  border-radius: 6px;
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.controls-container input {
+  width: 80px;
+  text-align: center;
+}
+
+.controls-container select {
+  min-width: 160px;
+}
+
+.controls-container input:focus, .controls-container select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.controls-container button {
+  padding: 0.5rem 1.5rem;
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.controls-container button:hover {
+  background: #5856eb;
+}
+
+.controls-container button:active {
+  background: #4f46e5;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  canvas {
+    max-width: 90vw;
+    height: auto !important;
+  }
+  
+  .sketch-header h1 {
+    font-size: 2rem;
+  }
+  
+  .sketch-header, .sketch-footer {
+    padding: 1rem;
+  }
+}
