@@ -74,15 +74,15 @@ function drawGrid(worldToDraw) {
   for (let y = 0; y <= height; y += spacingY) line(0, y, width, y);
 
   // draw cans
-  noStroke();
-  fill(0, 150, 0);
+  textAlign(CENTER, CENTER);
+  textSize(min(spacingX, spacingY) * 0.6);
   for (let i = 0; i < GRID_W * GRID_H; i++) {
     if (worldToDraw.cells[i]) {
       let [gx, gy] = worldToDraw.xy(i);
-      circle(
+      text(
+        '🥫',
         gx * spacingX + spacingX / 2,
-        gy * spacingY + spacingY / 2,
-        min(spacingX, spacingY) / 3
+        gy * spacingY + spacingY / 2
       );
     }
   }
@@ -92,10 +92,11 @@ function drawReplayBot() {
   let spacingX = width / GRID_W;
   let spacingY = height / GRID_H;
 
-  fill(255, 0, 0);
-  circle(
+  textAlign(CENTER, CENTER);
+  textSize(min(spacingX, spacingY) * 0.8);
+  text(
+    '🤖',
     replaySim.x * spacingX + spacingX / 2,
-    replaySim.y * spacingY + spacingY / 2,
-    min(spacingX, spacingY) / 2
+    replaySim.y * spacingY + spacingY / 2
   );
 }
