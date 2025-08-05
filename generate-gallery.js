@@ -25,8 +25,8 @@ async function generateGallery() {
   const sketchesDir = './sketches';
   const entries = await fs.readdir(sketchesDir, { withFileTypes: true });
   
-  let sketchCount = 0;
-  
+  // Sort entries by creation date (newest first)
+  const entriesWithDates = [];
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.name === 'lost+found') continue;
     
@@ -35,10 +35,31 @@ async function generateGallery() {
     
     try {
       await fs.access(indexPath);
+      
+      // Read creation date from HTML meta tag
+      const htmlContent = await fs.readFile(indexPath, 'utf8');
+      const htmlDom = new JSDOM(htmlContent);
+      const htmlDoc = htmlDom.window.document;
+      
+      const creationDateElement = htmlDoc.querySelector('meta[name="creation-date"]');
+      const creationDate = creationDateElement ? new Date(creationDateElement.content) : new Date(0);
+      
+      entriesWithDates.push({ entry, creationDate });
     } catch {
-      console.log(`Skipping ${entry.name} - no index.html found`);
-      continue;
+      // Skip directories without index.html or fallback to epoch
+      const fallbackDate = new Date(0);
+      entriesWithDates.push({ entry, creationDate: fallbackDate });
     }
+  }
+  
+  // Sort by creation date, newest first
+  entriesWithDates.sort((a, b) => b.creationDate - a.creationDate);
+  
+  let sketchCount = 0;
+  
+  for (const { entry, creationDate } of entriesWithDates) {
+    const sketchDir = path.join(sketchesDir, entry.name);
+    const indexPath = path.join(sketchDir, 'index.html');
     
     sketchCount++;
     const sketchName = entry.name;
@@ -121,6 +142,14 @@ async function generateGallery() {
     title.className = 'sketch-title';
     title.textContent = sketchTitle;
     content.appendChild(title);
+    
+    // Create creation date if available
+    if (creationDate && creationDate.getTime() > 0) {
+      const dateElement = document.createElement('div');
+      dateElement.className = 'sketch-date';
+      dateElement.textContent = creationDate.toLocaleDateString();
+      content.appendChild(dateElement);
+    }
     
     // Create description if available
     if (sketchDescription) {
