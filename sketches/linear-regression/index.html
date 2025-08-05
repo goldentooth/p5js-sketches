@@ -1,25 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Interactive playground for experimenting with linear regression algorithms">
-    <meta name="author" content="Goldentooth Project">
-    
-    <title>Linear Regression Playground</title>
-    
-    <!-- Icon for browser tab -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23ff6b6b'/></svg>">
-    
-    <link rel="stylesheet" type="text/css" href="style.css">
-    
-    <script src="libraries/p5.min.js"></script>
-    <script src="libraries/p5.sound.min.js"></script>
-  </head>
 
-  <body>
-    <main id="sketch-container">
-      <script src="sketch.js"></script>
-    </main>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interactive playground for experimenting with linear regression algorithms">
+  <meta name="author" content="Goldentooth Project">
+
+  <title>Linear Regression Playground</title>
+
+  <!-- Icon for browser tab -->
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23ff6b6b'/></svg>">
+
+  <link rel="stylesheet" type="text/css" href="style.css">
+
+  <script src="libraries/p5.min.js"></script>
+  <script src="libraries/p5.sound.min.js"></script>
+</head>
+
+<body>
+  <header class="sketch-header">
+    <h1>Linear Regression Playground</h1>
+    <p class="sketch-description">
+      An interactive visualization demonstrating linear regression algorithms. Watch as the algorithm learns to fit a
+      line through scattered data points using gradient descent. You can choose between different learning approaches
+      and see how the predicted line gradually converges to match the underlying pattern in the data.
+    </p>
+    <div class="controls-info">
+      <strong>How to use:</strong> Use the dropdown to select different regression algorithms ("simple" uses a
+      quadrant-based approach, "square" uses the squared error loss, and "absolute" uses the absolute error loss). Click
+      "Regenerate" to create new random data points and reset the learning process.
+    </div>
+  </header>
+
+  <main id="sketch-container">
+    <script src="sketch.js"></script>
+  </main>
+
+  <footer class="sketch-footer">
+    <div class="technical-details">
+      <h3>Technical Details</h3>
+      <ul>
+        <li><strong>Algorithm:</strong> Implements both quadrant-based and gradient descent approaches</li>
+        <li><strong>Learning Rate:</strong> Adaptive rates for weight (0.0002) and bias (0.008) updates</li>
+        <li><strong>Data Generation:</strong> Random linear relationship with Gaussian noise</li>
+        <li><strong>Visualization:</strong> Real-time display of data points, predicted line, and learning progress</li>
+      </ul>
+    </div>
+  </footer>
+</body>
+
 </html>

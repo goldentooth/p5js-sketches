@@ -10,6 +10,11 @@
 
   <title>Robbie the Robot</title>
 
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%2322c55e'/></svg>">
+
+  <link rel="stylesheet" type="text/css" href="style.css">
+
   <script src="libraries/p5.js"></script>
   <script src="libraries/p5.sound.min.js"></script>
   <script src="world.js"></script>
@@ -18,7 +23,48 @@
 </head>
 
 <body>
-  <script src="main.js"></script>
+  <header class="sketch-header">
+    <h1>Robbie the Robot - Genetic Algorithm Evolution</h1>
+    <p class="sketch-description">
+      Watch as a population of robots evolves using genetic algorithms to efficiently collect cans in a grid world. Each
+      robot is controlled by a simple genome - the best performers pass their "genes" to the next generation, while poor
+      performers are eliminated. Over hundreds of generations, you'll see increasingly intelligent behavior emerge.
+    </p>
+    <div class="controls-info">
+      <strong>What you're seeing:</strong> The visualization shows the best robot from the current generation navigating
+      a 10×10 grid world containing 50 randomly placed cans. The genetic algorithm runs in a background worker thread
+      with a population of 20,000 robots per generation.
+    </div>
+  </header>
+
+  <main id="sketch-container">
+    <script src="main.js"></script>
+  </main>
+
+  <footer class="sketch-footer">
+    <div class="technical-details">
+      <h3>Technical Details</h3>
+      <ul>
+        <li><strong>Population Size:</strong> 20,000 robots per generation</li>
+        <li><strong>Genome:</strong> Each robot has a simple genome that matches a possible state (the presence or
+          absence of a can or wall at each of the four cardinal directions, plus the present square) with an action
+          (move in a cardinal direction, move randomly (but safely), or attempt to take the can at the present square)
+        </li>
+        <li><strong>Fitness Function:</strong> Robots are scored based on cans collected during their lifetime</li>
+        <li><strong>Selection:</strong> Top performers are selected for reproduction with mutation</li>
+        <li><strong>Environment:</strong> 10×10 grid world with 50 randomly distributed cans</li>
+        <li><strong>Lifespan:</strong> Each robot gets 200 moves (2 × grid area) to collect as many cans as possible
+        </li>
+        <li><strong>Implementation:</strong> Uses Web Workers for non-blocking genetic algorithm computation</li>
+      </ul>
+    </div>
+    <div class="generation-info">
+      <h3>Evolution Progress</h3>
+      <p>Monitor the browser console to see generation-by-generation progress including best and worst fitness scores.
+        You should observe steady improvement over time as successful strategies emerge and spread through the
+        population.</p>
+    </div>
+  </footer>
 </body>
 
 </html>

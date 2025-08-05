@@ -1,7 +1,116 @@
+:root {
+  --bg-color: #f8f9fa;
+  --text-color: #212529;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #212529;
+    --text-color: #f8f9fa;
+  }
+}
+
 html, body {
   margin: 0;
   padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
+
+#sketch-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 0;
+}
+
 canvas {
   display: block;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.sketch-header {
+  text-align: center;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.sketch-header h1 {
+  margin: 0 0 1rem 0;
+  font-size: 2.5rem;
+  font-weight: 600;
+}
+
+.sketch-description {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  color: var(--text-color);
+  opacity: 0.9;
+}
+
+.controls-info {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.sketch-footer {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.technical-details h3,
+.generation-info h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.3rem;
+  color: var(--text-color);
+}
+
+.generation-info {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(107, 114, 128, 0.2);
+}
+
+.technical-details ul {
+  list-style: none;
+  padding: 0;
+}
+
+.technical-details li {
+  margin-bottom: 0.5rem;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.technical-details li::before {
+  content: '•';
+  color: #22c55e;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  canvas {
+    max-width: 90vw;
+    height: auto !important;
+  }
+  
+  .sketch-header h1 {
+    font-size: 2rem;
+  }
+  
+  .sketch-header, .sketch-footer {
+    padding: 1rem;
+  }
 }
