@@ -1,23 +1,44 @@
-# P5.js Sketches Server
+# P5.js Sketches Gallery
 
-A Kubernetes-native static file server for hosting p5.js sketches on the Goldentooth cluster, currently using local-path storage.
+A collection of interactive p5.js creative coding sketches with automated preview generation and multi-platform deployment.
+
+**🎨 View the live gallery at: https://p5js-sketches.goldentooth.net/**
+
+This project features both Kubernetes deployment on the Goldentooth cluster and GitHub Pages hosting for broader accessibility.
 
 ## Features
 
-- **Static File Server**: nginx optimized for ARM64 Pi hardware
-- **Storage**: local-path persistent volume (single-node)
-- **Single Instance**: Single-replica deployment (limited by ReadWriteOnce storage)
-- **Networking**: MetalLB LoadBalancer with external-dns integration
-- **Security**: Non-root container with read-only filesystem
-- **Automated Preview Generation**: GitHub Actions automatically captures preview images of sketches using headless browser automation
+- **Interactive Sketches**: Creative coding projects built with p5.js
+- **Automated Preview Generation**: GitHub Actions captures preview images using headless browser automation
+- **Multi-Platform Deployment**: 
+  - **Production**: Kubernetes on Goldentooth Raspberry Pi cluster
+  - **GitHub Pages**: Automated deployment for broader accessibility
+- **Gallery Interface**: Responsive web gallery with sketch previews and descriptions
+- **Enhanced Documentation**: Rich HTML content with technical details for each sketch
+
+## Current Sketches
+
+### Linear Regression Playground
+Interactive visualization demonstrating linear regression using gradient descent and quadrant-based learning approaches. Features adaptive learning rates and visual feedback showing convergence progress.
+
+### Robbie the Robot - Genetic Algorithm Evolution  
+A sophisticated genetic algorithm simulation where 20,000 neural network-controlled robots evolve over generations to efficiently collect cans in a grid world. Watch intelligent behavior emerge through evolutionary selection.
 
 ## Deployment
 
-This application is deployed via ArgoCD as part of the Goldentooth GitOps workflow.
+### Production (Kubernetes)
+Deployed via ArgoCD on the Goldentooth Raspberry Pi cluster:
+- **URL**: https://p5js-sketches.services.k8s.goldentooth.net/
+- **Infrastructure**: ARM64 optimized nginx on Kubernetes
+- **Storage**: local-path persistent volumes
+- **Networking**: MetalLB LoadBalancer with external-dns
 
-### URL
-
-- Production: https://p5js-sketches.services.k8s.goldentooth.net/
+### GitHub Pages (Public)
+Automated deployment for broader accessibility:
+- **URL**: https://p5js-sketches.goldentooth.net/ (custom domain)
+- **Deployment**: GitHub Actions workflow
+- **Trigger**: Automatic on push to main branch
+- **Content**: Same gallery and sketches as production
 
 ### Storage Layout
 
