@@ -76,20 +76,12 @@ function predict(x) {
 function setup() {
   createCanvas(WIDTH, HEIGHT);
 
-  let regenerateButton = createButton('regenerate');
-  regenerateButton.position(width + 10, 0);
-  regenerateButton.mousePressed(regenerate);
-
-  let toggleTrainButton = createButton('train / pause');
-  toggleTrainButton.position(width + 10, 30);
-  toggleTrainButton.mousePressed(() => isTraining = !isTraining);
-
-  trickSelector = createSelect();
-  trickSelector.position(width + 10, 60);
-  trickSelector.option('simple');
-  trickSelector.option('square');
-  trickSelector.option('absolute');
-  trickSelector.changed(() => currentTrick = trickSelector.value());
+  // Wire up HTML controls
+  document.getElementById('regenerate-btn').addEventListener('click', regenerate);
+  document.getElementById('train-btn').addEventListener('click', () => isTraining = !isTraining);
+  document.getElementById('algorithm-select').addEventListener('change', (e) => {
+    currentTrick = e.target.value;
+  });
 
   regenerate();
 }

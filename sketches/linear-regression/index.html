@@ -33,6 +33,16 @@
       quadrant-based approach, "square" uses the squared error loss, and "absolute" uses the absolute error loss). Click
       "Regenerate" to create new random data points and reset the learning process.
     </div>
+
+    <div class="sketch-controls">
+      <button id="regenerate-btn" class="control-button">Regenerate</button>
+      <button id="train-btn" class="control-button">Train / Pause</button>
+      <select id="algorithm-select" class="control-select">
+        <option value="simple">Simple (Quadrant)</option>
+        <option value="square">Square Error</option>
+        <option value="absolute">Absolute Error</option>
+      </select>
+    </div>
   </header>
 
   <main id="sketch-container">

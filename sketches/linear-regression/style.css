@@ -61,6 +61,46 @@ canvas {
   line-height: 1.5;
 }
 
+.sketch-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.control-button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.control-button:hover {
+  background: #2563eb;
+}
+
+.control-button:active {
+  background: #1d4ed8;
+}
+
+.control-select {
+  background: var(--bg-color);
+  color: var(--text-color);
+  border: 2px solid #3b82f6;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-width: 160px;
+}
+
 .sketch-footer {
   max-width: 800px;
   margin: 0 auto;
@@ -105,5 +145,15 @@ canvas {
   
   .sketch-header, .sketch-footer {
     padding: 1rem;
+  }
+  
+  .sketch-controls {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .control-button, .control-select {
+    width: 100%;
+    max-width: 240px;
   }
 }
