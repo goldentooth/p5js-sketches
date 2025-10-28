@@ -1,0 +1,75 @@
+{{ define "title" }}{{ .Title }}{{ end }}
+
+{{ define "head" }}
+<!-- Base sketch styles -->
+<link rel="stylesheet" type="text/css" href="{{ "css/sketch-base.css" | relURL }}">
+
+<!-- Sketch-specific styles -->
+{{ $style := .Resources.GetMatch "style.css" }}
+{{ with $style }}
+<link rel="stylesheet" type="text/css" href="{{ .RelPermalink }}">
+{{ end }}
+
+<!-- Merge libraries from hugo.toml params with any additional libraries specified in sketch frontmatter. -->
+{{ $libraries := .Site.Params.libraries }}
+{{ with .Params.libraries }}
+{{ $libraries = union $libraries . }}
+{{ end }}
+
+<!-- Loop through libraries and include them. -->
+{{ range $libraries }}
+<script src='{{ printf "libraries/%s" . | relURL }}'></script>
+{{ end }}
+{{ end }}
+
+{{ define "main" }}
+<header class="sketch-header">
+  <h1>{{ .Title }}</h1>
+  {{ with .Description }}
+  <p class="sketch-description">{{ . }}</p>
+  {{ end }}
+  {{ with .Params.usage }}
+  <div class="controls-info">
+    <strong>How to use:</strong> {{ . | safeHTML }}
+  </div>
+  {{ end }}
+
+  {{ with .Params.controls }}
+  <div class="sketch-controls">
+    {{ . | safeHTML }}
+  </div>
+  {{ end }}
+</header>
+
+<main id="sketch-container">
+  {{ with .Params.scripts }}
+  {{ range . }}
+  {{ $script := $.Resources.GetMatch . }}
+  {{ with $script }}
+  <script src="{{ .RelPermalink }}"></script>
+  {{ end }}
+  {{ end }}
+  {{ end }}
+  {{ with .Params.modules }}
+  {{ range . }}
+  {{ $module := $.Resources.GetMatch . }}
+  {{ with $module }}
+  <script src="{{ .RelPermalink }}" type="module"></script>
+  {{ end }}
+  {{ end }}
+  {{ end }}
+</main>
+
+{{ with .Params.extra_controls }}
+{{ . | safeHTML }}
+{{ end }}
+
+{{ with .Params.technical_details }}
+<footer class="sketch-footer">
+  <div class="technical-details">
+    <h3>Technical Details</h3>
+    {{ . | safeHTML }}
+  </div>
+</footer>
+{{ end }}
+{{ end }}

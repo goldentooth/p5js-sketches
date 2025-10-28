@@ -1,0 +1,28 @@
+# Hugo build output (generated files)
+/public/
+/resources/_gen/
+/assets/jsconfig.json
+hugo_stats.json
+/.hugo_build.lock
+
+# Node.js (old build system - can be removed once cleaned up)
+node_modules/
+
+# Test artifacts
+/tmp/
+*.log
+test-*.png
+test-*.html
+test-*.js
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.hugo_build.lock

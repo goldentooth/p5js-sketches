@@ -1,0 +1,23 @@
+{
+  "name": "p5js-sketches",
+  "version": "1.0.0",
+  "description": "p5.js evolutionary simulation sketches",
+  "type": "module",
+  "scripts": {
+    "build": "npm run typecheck && esbuild src/index.ts --bundle --minify --format=iife --global-name=Nuglib --outfile=static/libraries/nuglib.min.js",
+    "build:watch": "esbuild src/index.ts --bundle --minify --format=iife --global-name=Nuglib --outfile=static/libraries/nuglib.min.js --watch",
+    "test": "vitest --run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "test:watch": "vitest --watch",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/p5": "^1.7.7",
+    "@vitest/coverage-v8": "^2.1.8",
+    "@vitest/ui": "^2.1.8",
+    "esbuild": "^0.25.11",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
+  }
+}
