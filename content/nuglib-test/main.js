@@ -1,56 +1,65 @@
-
 new p5(p => {
   const W = 600;
   const H = 400;
-  const W_SCALE = 8;
-  const H_SCALE = 12;
-  const C = W / W_SCALE;
-  const R = H / H_SCALE;
+  const W_SCALE = 32;
+  const ASPECT_RATIO = 1.5;
+  const H_SCALE = Math.floor(ASPECT_RATIO * W_SCALE);
+  const C = Math.floor(W / W_SCALE);
+  const W2 = C * W_SCALE;
+  const R = Math.floor(H / H_SCALE);
+  const H2 = R * H_SCALE;
+
+  const renderSystemOptions = {
+    glyphHeight: H_SCALE,
+    glyphWidth: W_SCALE,
+  }
+  const gridRendererOptions = {
+    cellHeight: H_SCALE,
+    cellWidth: W_SCALE,
+  };
+
   let worker;
   let world;
   let grid;
+  let gridRenderer;
   p.setup = () => {
-    p.createCanvas(W, H);
+    p.createCanvas(W2, H2);
     p.background(20);
     p.strokeWeight(2);
+
     worker = new Worker(`worker.js?t=${Date.now()}`);
+
     world = Nuglib.createWorld();
     world.registerComponent(Nuglib.Position);
     world.registerComponent(Nuglib.Glyph);
-    world.addSystem(Nuglib.RenderSystem());
+    world.addSystem(Nuglib.RenderSystem(renderSystemOptions));
+
+    gridRenderer = Nuglib.GridRenderer(gridRendererOptions);
+
     grid = Nuglib.createGrid(C, R);
-    grid.init((index, x, y) => {
-      return {
-        x,
-        y,
-        value: {
-          glyph: '#',
-          fg: [99, 99, 56],
-          bg: [255, 255, 255],
-        },
-        draw(p, layer) {
-          layer.textAlign(layer.CENTER, layer.CENTER);
-          layer.stroke(50);
-          layer.fill(100);
-          layer.text('#', this.x * W_SCALE, this.y * H_SCALE);
-        }
-      };
+
+    grid.init((cell) => {
+      cell.value = Nuglib.createGlyph('#', [150, 150, 150], [0, 0, 0]);
     });
+
     const e = world.createEntity();
-    world.addComponent(e, Nuglib.Position, { x: Math.floor(Math.random() * C) * W_SCALE, y: Math.floor(Math.random() * R) * H_SCALE });
-    world.addComponent(e, Nuglib.Glyph, { glyph: 'A', fg: [255, 0, 0], bg: [0, 0, 0], size: H_SCALE });
+    world.addComponent(e, Nuglib.Position, {
+      x: Math.floor(Math.random() * C),
+      y: Math.floor(Math.random() * R),
+    });
+    world.addComponent(e, Nuglib.Glyph, Nuglib.createGlyph('A', [255, 0, 0], [0, 0, 0]));
   };
   let last = 0;
-  let gridLayer = p.createGraphics(W, H);
+  let gridLayer = p.createGraphics(W2, H2);
   gridLayer.textFont('monospace', H_SCALE);
-  let entityLayer = p.createGraphics(W, H);
+  let entityLayer = p.createGraphics(W2, H2);
   entityLayer.textFont('monospace', H_SCALE);
   p.draw = () => {
     p.background(0);
     const now = p.millis() / 1000;
     const dt = last ? Math.min(now - last, 0.05) : 0; // clamp for stability
     last = now;
-    grid.draw(p, gridLayer);
+    gridRenderer.draw(grid, p, gridLayer);
     world.tick(dt, p, entityLayer);
     p.image(gridLayer, 0, 0);
     p.image(entityLayer, 0, 0);

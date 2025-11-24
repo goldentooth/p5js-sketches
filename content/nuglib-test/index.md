@@ -3,7 +3,7 @@ title: "Nuglib Test"
 date: 2025-10-27T16:50:25-04:00
 description: "Brief description of what this sketch does"
 usage: "How to interact with this sketch"
-draft: false
+draft: true
 scripts:
   - "main.js"
 technical_details: |
