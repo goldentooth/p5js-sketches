@@ -28,7 +28,7 @@ const glyphs = {
 
 let grid;
 let gridRenderer;
-let gridLayer;
+let layerManager;
 let walker;
 let playback;
 let charHeight = 24;
@@ -84,11 +84,10 @@ function setup() {
     backgroundColor: color(0),
   });
 
-  // Create graphics layer for grid
-  gridLayer = createGraphics(width, height);
-  gridLayer.textFont('Courier New');
-  gridLayer.textSize(24);
-  gridLayer.textAlign(CENTER, CENTER);
+  // Create layer manager and grid layer
+  layerManager = new Nuglib.LayerManager(window);
+  const layerConfig = Nuglib.createTextLayerConfig(width, height, 24, 'Courier New');
+  layerManager.createLayer('grid', layerConfig);
 
   // Initialize grid
   initGrid();
@@ -116,6 +115,7 @@ function draw() {
   }
 
   // Render the grid
+  const gridLayer = layerManager.requireLayer('grid');
   gridRenderer.draw(grid, window, gridLayer);
-  image(gridLayer, 0, 0);
+  layerManager.render();
 }

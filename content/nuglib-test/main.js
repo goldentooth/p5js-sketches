@@ -22,6 +22,8 @@ new p5(p => {
   let world;
   let grid;
   let gridRenderer;
+  let layerManager;
+
   p.setup = () => {
     p.createCanvas(W2, H2);
     p.background(20);
@@ -36,6 +38,12 @@ new p5(p => {
 
     gridRenderer = Nuglib.GridRenderer(gridRendererOptions);
 
+    // Create layer manager with grid and entity layers
+    layerManager = new Nuglib.LayerManager(p);
+    const layerConfig = Nuglib.createTextLayerConfig(W2, H2, H_SCALE, 'monospace');
+    layerManager.createLayer('grid', layerConfig);
+    layerManager.createLayer('entity', layerConfig);
+
     grid = Nuglib.createGrid(C, R);
 
     grid.init((cell) => {
@@ -49,19 +57,20 @@ new p5(p => {
     });
     world.addComponent(e, Nuglib.Glyph, Nuglib.withColor('A', [255, 0, 0], [0, 0, 0]));
   };
+
   let last = 0;
-  let gridLayer = p.createGraphics(W2, H2);
-  gridLayer.textFont('monospace', H_SCALE);
-  let entityLayer = p.createGraphics(W2, H2);
-  entityLayer.textFont('monospace', H_SCALE);
   p.draw = () => {
     p.background(0);
     const now = p.millis() / 1000;
     const dt = last ? Math.min(now - last, 0.05) : 0; // clamp for stability
     last = now;
+
+    const gridLayer = layerManager.requireLayer('grid');
+    const entityLayer = layerManager.requireLayer('entity');
+
     gridRenderer.draw(grid, p, gridLayer);
     world.tick(dt, p, entityLayer);
-    p.image(gridLayer, 0, 0);
-    p.image(entityLayer, 0, 0);
+
+    layerManager.render();
   };
 });

@@ -1,4 +1,5 @@
 export * from './types';
+export * from './LayerManager';
 
 import type { PixelX, PixelY, PixelHeight, PixelWidth } from './types';
 import type { GridX, GridY } from '../grid';
