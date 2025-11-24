@@ -1,100 +1,99 @@
-class Tile {
-  constructor(char = '#', color = [128, 128, 128]) {
-    this.char = char;
-    this.color = color;
-  }
-}
+// Initialize RNG with seed
+const rng = Nuglib.xoroshiro128plus(BigInt(Date.now()));
 
 class Walker {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.color = [random(100, 255), random(100, 255), random(100, 255)];
+    this.color = [
+      rng.nextRange(100, 255),
+      rng.nextRange(100, 255),
+      rng.nextRange(100, 255)
+    ];
   }
 
   step() {
-    let xstep = floor(random(3)) - 1;
-    let ystep = floor(random(3)) - 1;
+    let xstep = rng.nextRange(0, 3) - 1;
+    let ystep = rng.nextRange(0, 3) - 1;
     this.x += xstep;
     this.y += ystep;
   }
 }
 
-const tiles = {
-  wall: new Tile('#', [128, 128, 128]),
-  floor: new Tile('.', [255, 255, 255]),
-}
+// Glyph templates
+const glyphs = {
+  wall: () => Nuglib.createGlyph('#', [128, 128, 128], [0, 0, 0]),
+  floor: (color) => Nuglib.createGlyph('.', color, [0, 0, 0]),
+};
 
-class TileMap {
-  constructor(cols, rows) {
-    this.cols = cols;
-    this.rows = rows;
-    this.resetWalker();
-    this.map = [];
-    for (let i = 0; i < cols; i++) {
-      this.map[i] = [];
-      for (let j = 0; j < rows; j++) {
-        this.map[i][j] = tiles.wall;
-      }
-    }
-  }
-
-  step() {
-    if (random() < 0.1) {
-      this.walker.step();
-    }
-    if (!this.checkWalker()) {
-      this.resetWalker();
-    }
-    this.map[this.walker.x][this.walker.y] = new Tile(tiles.floor.char, this.walker.color);
-  }
-
-  checkWalker() {
-    switch (true) {
-      case this.walker.x < 0:
-      case this.walker.y < 0:
-      case this.walker.x >= this.cols:
-      case this.walker.y >= this.rows:
-        return false;
-      default:
-        return true;
-    }
-  }
-
-  resetWalker() {
-    const newX = floor(this.cols / 2);
-    const newY = floor(this.rows / 2);
-    this.walker = new Walker(newX, newY);
-  }
-
-  containsWalker(x, y) {
-    return this.walker.x === x && this.walker.y === y;
-  }
-
-  display(charWidth, charHeight, fontSize) {
-    textFont('Courier New');
-    textSize(fontSize);
-    for (let i = 0; i < this.cols; i++) {
-      for (let j = 0; j < this.rows; j++) {
-        const tile = this.map[i][j];
-        fill(...tile.color);
-        text(tile.char, (i + 1) * charWidth, (j + 1) * charHeight);
-      }
-    }
-  }
-}
-
-let tileMap;
+let grid;
+let gridRenderer;
+let gridLayer;
+let walker;
 let charHeight = 24;
 let charWidth = 16;
 let isRunning = true;
 let shouldStep = false;
 let stepsPerFrame = 1;
+let cols;
+let rows;
+
+function initGrid() {
+  cols = floor(width / charWidth);
+  rows = floor(height / charHeight);
+
+  // Create grid and initialize all cells as walls
+  grid = Nuglib.createGrid(cols, rows);
+  grid.init((cell) => {
+    cell.value = glyphs.wall();
+  });
+
+  // Reset walker to center
+  resetWalker();
+}
+
+function resetWalker() {
+  const newX = floor(cols / 2);
+  const newY = floor(rows / 2);
+  walker = new Walker(newX, newY);
+}
+
+function stepWalker() {
+  // Only step 10% of the time for slower movement
+  if (rng.nextFloat() < 0.1) {
+    walker.step();
+  }
+
+  // Check if walker is out of bounds
+  if (walker.x < 0 || walker.y < 0 || walker.x >= cols || walker.y >= rows) {
+    resetWalker();
+    return;
+  }
+
+  // Carve out the floor at walker's position
+  const cell = grid.getCell(walker.x, walker.y);
+  cell.value = glyphs.floor(walker.color);
+}
 
 function setup() {
-  createCanvas(400, 400);
-  tileMap = new TileMap(floor(width / charWidth), floor(height / charHeight), '#');
+  createCanvas(charWidth * 40, charHeight * 25);
   background(0);
+
+  // Create grid renderer
+  gridRenderer = Nuglib.GridRenderer({
+    cellHeight: charHeight,
+    cellWidth: charWidth,
+    backgroundColor: color(0),
+  });
+
+  // Create graphics layer for grid
+  gridLayer = createGraphics(width, height);
+  gridLayer.textFont('Courier New');
+  gridLayer.textSize(24);
+  gridLayer.textAlign(CENTER, CENTER);
+
+  // Initialize grid
+  initGrid();
 
   // Wire up controls
   document.getElementById('pause-btn').addEventListener('click', togglePause);
@@ -119,19 +118,21 @@ function stepOnce() {
 }
 
 function clearMap() {
-  tileMap = new TileMap(floor(width / charWidth), floor(height / charHeight), '#');
+  initGrid();
   background(0);
 }
 
 function draw() {
-  clear();
+  background(0);
 
   if (isRunning || shouldStep) {
     for (let i = 0; i < stepsPerFrame; i++) {
-      tileMap.step();
+      stepWalker();
     }
     shouldStep = false;
   }
 
-  tileMap.display(charWidth, charHeight, 24);
+  // Render the grid
+  gridRenderer.draw(grid, window, gridLayer);
+  image(gridLayer, 0, 0);
 }
