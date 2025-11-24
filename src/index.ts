@@ -1,3 +1,4 @@
+export * from './controls';
 export * from './ecs';
 export * from './glyph';
 export * from './grid';

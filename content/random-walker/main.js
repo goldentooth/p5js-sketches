@@ -30,11 +30,9 @@ let grid;
 let gridRenderer;
 let gridLayer;
 let walker;
+let playback;
 let charHeight = 24;
 let charWidth = 16;
-let isRunning = true;
-let shouldStep = false;
-let stepsPerFrame = 1;
 let cols;
 let rows;
 
@@ -95,26 +93,12 @@ function setup() {
   // Initialize grid
   initGrid();
 
-  // Wire up controls
-  document.getElementById('pause-btn').addEventListener('click', togglePause);
-  document.getElementById('step-btn').addEventListener('click', stepOnce);
-  document.getElementById('clear-btn').addEventListener('click', clearMap);
-  document.getElementById('speed-slider').addEventListener('input', updateSpeed);
-}
-
-function updateSpeed(event) {
-  stepsPerFrame = parseInt(event.target.value);
-  document.getElementById('speed-value').textContent = stepsPerFrame;
-}
-
-function togglePause() {
-  isRunning = !isRunning;
-  const btn = document.getElementById('pause-btn');
-  btn.textContent = isRunning ? 'Pause' : 'Resume';
-}
-
-function stepOnce() {
-  shouldStep = true;
+  // Create playback controller and wire up controls
+  playback = new Nuglib.PlaybackController({ isRunning: true, stepsPerFrame: 1 });
+  playback.bindPlayPauseButton('pause-btn');
+  playback.bindStepButton('step-btn');
+  playback.bindSpeedSlider('speed-slider', 'speed-value');
+  playback.bindButton('clear-btn', clearMap);
 }
 
 function clearMap() {
@@ -125,11 +109,10 @@ function clearMap() {
 function draw() {
   background(0);
 
-  if (isRunning || shouldStep) {
-    for (let i = 0; i < stepsPerFrame; i++) {
+  if (playback.shouldRun()) {
+    for (let i = 0; i < playback.getStepsPerFrame(); i++) {
       stepWalker();
     }
-    shouldStep = false;
   }
 
   // Render the grid
