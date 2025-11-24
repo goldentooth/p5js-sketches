@@ -39,7 +39,7 @@ new p5(p => {
     grid = Nuglib.createGrid(C, R);
 
     grid.init((cell) => {
-      cell.value = Nuglib.createGlyph('#', [150, 150, 150], [0, 0, 0]);
+      cell.value = Nuglib.withColor('#', [150, 150, 150], [0, 0, 0]);
     });
 
     const e = world.createEntity();
@@ -47,7 +47,7 @@ new p5(p => {
       x: Math.floor(Math.random() * C),
       y: Math.floor(Math.random() * R),
     });
-    world.addComponent(e, Nuglib.Glyph, Nuglib.createGlyph('A', [255, 0, 0], [0, 0, 0]));
+    world.addComponent(e, Nuglib.Glyph, Nuglib.withColor('A', [255, 0, 0], [0, 0, 0]));
   };
   let last = 0;
   let gridLayer = p.createGraphics(W2, H2);

@@ -20,10 +20,10 @@ class Walker {
   }
 }
 
-// Glyph templates
+// Glyph templates using palette API
 const glyphs = {
-  wall: () => Nuglib.createGlyph('#', [128, 128, 128], [0, 0, 0]),
-  floor: (color) => Nuglib.createGlyph('.', color, [0, 0, 0]),
+  wall: Nuglib.glyphFactory('#', [128, 128, 128], [0, 0, 0]),
+  floor: Nuglib.coloredGlyphFactory('.', [0, 0, 0]),
 };
 
 let grid;
