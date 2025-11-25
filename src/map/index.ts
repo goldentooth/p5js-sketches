@@ -1,18 +1,45 @@
 export * from './types';
 
-import type { Map } from './types';
-import { TileType } from './types';
+import type { Map, MapOptions, TileType } from './types';
+import { Tiles } from './types';
+
+/**
+ * Wrap a value to be within [0, max)
+ */
+function wrap(value: number, max: number): number {
+  return ((value % max) + max) % max;
+}
 
 /**
  * Create a new map with the specified dimensions
- * All tiles are initialized as walls
+ * @param width Width of the map in tiles
+ * @param height Height of the map in tiles
+ * @param options Optional configuration for default tile and edge behavior
  */
-export function createMap(width: number, height: number): Map {
-  const tiles = new Array(width * height).fill(TileType.Wall);
+export function createMap(width: number, height: number, options?: MapOptions): Map {
+  const defaultTile = options?.defaultTile ?? Tiles.Wall;
+  const edgeBehavior = options?.edgeBehavior ?? 'block';
+  const tiles = new Array(width * height).fill(defaultTile);
+
+  /**
+   * Normalize coordinates based on edge behavior
+   * For 'wrap': wraps coordinates to valid range
+   * For 'block': returns original coordinates
+   */
+  function normalizeCoords(x: number, y: number): { x: number; y: number } {
+    if (edgeBehavior === 'wrap') {
+      return {
+        x: wrap(x, width),
+        y: wrap(y, height),
+      };
+    }
+    return { x, y };
+  }
 
   return {
     width,
     height,
+    edgeBehavior,
 
     coordsToIndex(x: number, y: number): number {
       return y * width + x;
@@ -29,12 +56,14 @@ export function createMap(width: number, height: number): Map {
     },
 
     getTile(x: number, y: number): TileType {
-      const index = this.coordsToIndex(x, y);
+      const normalized = normalizeCoords(x, y);
+      const index = this.coordsToIndex(normalized.x, normalized.y);
       return tiles[index];
     },
 
     setTile(x: number, y: number, tile: TileType): void {
-      const index = this.coordsToIndex(x, y);
+      const normalized = normalizeCoords(x, y);
+      const index = this.coordsToIndex(normalized.x, normalized.y);
       tiles[index] = tile;
     },
 
@@ -47,12 +76,19 @@ export function createMap(width: number, height: number): Map {
     },
 
     blocksMovement(x: number, y: number): boolean {
-      // Out of bounds blocks movement
+      // With wrapping, coordinates wrap around rather than blocking
+      if (edgeBehavior === 'wrap') {
+        const normalized = normalizeCoords(x, y);
+        return this.getTile(normalized.x, normalized.y) === Tiles.Wall;
+      }
+
+      // With blocking, out of bounds blocks movement
       if (!this.isInBounds(x, y)) {
         return true;
       }
-      // Walls block movement, floors do not
-      return this.getTile(x, y) === TileType.Wall;
+
+      // Check if the tile itself blocks movement
+      return this.getTile(x, y) === Tiles.Wall;
     },
   };
 }
