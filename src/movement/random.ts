@@ -35,7 +35,7 @@ export function randomStep(
   canStayStill: boolean = true
 ): Direction {
   const nextInt = rng
-    ? (min: number, max: number) => rng.nextRange(min, max + 1)
+    ? (min: number, max: number) => rng.nextRange(min, max)
     : (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
   const range = canStayStill ? 3 : 2;
