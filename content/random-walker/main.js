@@ -9,10 +9,10 @@ class Walker {
   }
 
   step() {
-    let xstep = rng.nextRange(0, 3) - 1;
-    let ystep = rng.nextRange(0, 3) - 1;
-    this.x += xstep;
-    this.y += ystep;
+    // Use random step utility for 8-way movement
+    const direction = Nuglib.randomStep(rng, true);
+    this.x += direction.dx;
+    this.y += direction.dy;
   }
 }
 
