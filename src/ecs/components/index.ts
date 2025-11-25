@@ -2,6 +2,7 @@ export * from './BlocksMovement';
 export * from './Glyph';
 export * from './PlayerControlled';
 export * from './Position';
+export * from './Viewshed';
 
 /**
  * Type-safe component key registry
@@ -19,6 +20,7 @@ export const Components = {
   PlayerControlled: 'PlayerControlled',
   BlocksMovement: 'BlocksMovement',
   Glyph: 'Glyph',
+  Viewshed: 'Viewshed',
 } as const;
 
 // Note: Existing tests may use lowercase keys. Both are supported for backward compatibility.

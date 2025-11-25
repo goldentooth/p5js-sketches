@@ -8,6 +8,7 @@ describe('Component Registry', () => {
       expect(Components.PlayerControlled).toBe('PlayerControlled');
       expect(Components.BlocksMovement).toBe('BlocksMovement');
       expect(Components.Glyph).toBe('Glyph');
+      expect(Components.Viewshed).toBe('Viewshed');
     });
 
     it('should provide all expected component keys', () => {
@@ -16,7 +17,8 @@ describe('Component Registry', () => {
       expect(keys).toContain('PlayerControlled');
       expect(keys).toContain('BlocksMovement');
       expect(keys).toContain('Glyph');
-      expect(keys.length).toBe(4);
+      expect(keys).toContain('Viewshed');
+      expect(keys.length).toBe(5);
     });
   });
 
