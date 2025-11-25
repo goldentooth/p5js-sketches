@@ -5,11 +5,7 @@ class Walker {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.color = [
-      rng.nextRange(100, 255),
-      rng.nextRange(100, 255),
-      rng.nextRange(100, 255)
-    ];
+    this.color = Nuglib.randomBrightRgb(rng);
   }
 
   step() {

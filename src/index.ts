@@ -1,3 +1,4 @@
+export * from './color';
 export * from './controls';
 export * from './ecs';
 export * from './glyph';
