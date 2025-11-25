@@ -3,6 +3,7 @@ export * from './controls';
 export * from './ecs';
 export * from './glyph';
 export * from './grid';
+export * from './p5';
 export * from './render';
 export * from './rng';
 export * from './time';

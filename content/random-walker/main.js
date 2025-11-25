@@ -5,7 +5,7 @@ class Walker {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.color = Nuglib.randomBrightRgb(rng);
+    this.color = Nuglib.randomBrightRgb(rng, 100);
   }
 
   step() {
@@ -16,7 +16,7 @@ class Walker {
   }
 }
 
-// Glyph palette
+// Glyph palette for the sketch
 const palette = new Nuglib.GlyphPalette();
 palette.registerGlyph('wall', '#', [128, 128, 128], [0, 0, 0]);
 palette.registerGlyph('floor', '.', [64, 64, 64], [0, 0, 0]);
@@ -26,8 +26,8 @@ let gridRenderer;
 let layerManager;
 let walker;
 let playback;
-let charHeight = 24;
-let charWidth = 16;
+const charHeight = 24;
+const charWidth = 16;
 let cols;
 let rows;
 
@@ -57,8 +57,9 @@ function stepWalker() {
     walker.step();
   }
 
-  // Check if walker is out of bounds
-  if (!Nuglib.isInBounds(walker.x, walker.y, { width: cols, height: rows })) {
+  // Check if walker is out of bounds using grid bounds utilities
+  const bounds = { width: cols, height: rows };
+  if (!Nuglib.isInBounds(walker.x, walker.y, bounds)) {
     resetWalker();
     return;
   }
@@ -69,8 +70,24 @@ function stepWalker() {
 }
 
 function setup() {
-  createCanvas(charWidth * 40, charHeight * 25);
+  const gridDims = Nuglib.calculateGridDimensions(
+    charWidth * 40,
+    charHeight * 25,
+    charWidth,
+    charHeight
+  );
+
+  createCanvas(gridDims.adjustedWidth, gridDims.adjustedHeight);
   background(0);
+
+  cols = gridDims.cols;
+  rows = gridDims.rows;
+
+  // Create playback controller
+  playback = new Nuglib.PlaybackController({
+    isRunning: true,
+    stepsPerFrame: 1
+  });
 
   // Create grid renderer
   gridRenderer = Nuglib.GridRenderer({
@@ -79,17 +96,20 @@ function setup() {
     backgroundColor: color(0),
   });
 
-  // Create layer manager and grid layer
+  // Create layer manager
   layerManager = new Nuglib.LayerManager(window);
-  const layerConfig = Nuglib.createTextLayerConfig(width, height, 24, 'Courier New');
-  layerManager.createLayer('grid', layerConfig);
+  layerManager.createLayer('grid', Nuglib.createTextLayerConfig(
+    width,
+    height,
+    24,
+    'Courier New'
+  ));
 
   // Initialize grid
   initGrid();
 
-  // Create playback controller and wire up controls
-  playback = new Nuglib.PlaybackController({ isRunning: true, stepsPerFrame: 1 });
-  playback.bindPlayPauseButton('pause-btn');
+  // Wire up controls using playback controller
+  playback.bindPlayPauseButton('pause-btn', 'Resume', 'Pause');
   playback.bindStepButton('step-btn');
   playback.bindSpeedSlider('speed-slider', 'speed-value');
   playback.bindButton('clear-btn', clearMap);
@@ -109,7 +129,7 @@ function draw() {
     }
   }
 
-  // Render the grid
+  // Render the grid using layer manager
   const gridLayer = layerManager.requireLayer('grid');
   gridRenderer.draw(grid, window, gridLayer);
   layerManager.render();
