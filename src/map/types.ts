@@ -62,3 +62,43 @@ export interface Map {
   /** Check if a tile blocks movement */
   blocksMovement(x: number, y: number): boolean;
 }
+
+/**
+ * A rectangular room in a map
+ */
+export interface Room {
+  /** X coordinate of top-left corner */
+  x: number;
+  /** Y coordinate of top-left corner */
+  y: number;
+  /** Width of the room */
+  width: number;
+  /** Height of the room */
+  height: number;
+
+  /** Get the center coordinates of the room */
+  center(): { x: number; y: number };
+
+  /** Get the left edge x coordinate */
+  x1(): number;
+  /** Get the right edge x coordinate */
+  x2(): number;
+  /** Get the top edge y coordinate */
+  y1(): number;
+  /** Get the bottom edge y coordinate */
+  y2(): number;
+}
+
+/**
+ * Options for procedural map generation
+ */
+export interface GenerationOptions {
+  /** Maximum number of rooms to attempt to place */
+  maxRooms: number;
+  /** Minimum room size (width and height) */
+  minRoomSize: number;
+  /** Maximum room size (width and height) */
+  maxRoomSize: number;
+  /** Maximum attempts to place each room before giving up */
+  maxAttempts?: number;
+}
