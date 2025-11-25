@@ -4,6 +4,7 @@ import type { Direction } from '../../movement/directions';
 import type { Position } from '../components/Position';
 import { toGridX, toGridY } from '../../grid/types';
 import { Components } from '../components';
+import { normalizeCoordinates } from '../../grid/wrapping';
 
 interface MoveCommand {
   type: 'move';
@@ -41,18 +42,6 @@ export class MovementSystem implements System {
   }
 
   /**
-   * Wrap coordinates based on map edge behavior
-   */
-  private wrapCoordinates(x: number, y: number): { x: number; y: number } {
-    if (this.map.edgeBehavior === 'wrap') {
-      const wrappedX = ((x % this.map.width) + this.map.width) % this.map.width;
-      const wrappedY = ((y % this.map.height) + this.map.height) % this.map.height;
-      return { x: wrappedX, y: wrappedY };
-    }
-    return { x, y };
-  }
-
-  /**
    * Try to move an entity in a direction
    * Returns true if movement succeeded
    */
@@ -63,10 +52,16 @@ export class MovementSystem implements System {
     let newX = pos.x + direction.dx;
     let newY = pos.y + direction.dy;
 
-    // Wrap coordinates if map uses wrapping
-    const wrapped = this.wrapCoordinates(newX, newY);
-    newX = wrapped.x;
-    newY = wrapped.y;
+    // Normalize coordinates based on map edge behavior
+    const normalized = normalizeCoordinates(
+      newX,
+      newY,
+      this.map.width,
+      this.map.height,
+      this.map.edgeBehavior
+    );
+    newX = normalized.x;
+    newY = normalized.y;
 
     // Check if target tile blocks movement
     if (this.map.blocksMovement(newX, newY)) {

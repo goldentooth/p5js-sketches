@@ -3,15 +3,9 @@ export * from './types';
 import type { Map, MapOptions, TileType, Room, GenerationOptions } from './types';
 import { Tiles } from './types';
 import type { xoroshiro128plus } from '../rng';
+import { normalizeCoordinates } from '../grid/wrapping';
 
 type RNG = ReturnType<typeof xoroshiro128plus>;
-
-/**
- * Wrap a value to be within [0, max)
- */
-function wrap(value: number, max: number): number {
-  return ((value % max) + max) % max;
-}
 
 /**
  * Create a new map with the specified dimensions
@@ -23,21 +17,6 @@ export function createMap(width: number, height: number, options?: MapOptions): 
   const defaultTile = options?.defaultTile ?? Tiles.Wall;
   const edgeBehavior = options?.edgeBehavior ?? 'block';
   const tiles = new Array(width * height).fill(defaultTile);
-
-  /**
-   * Normalize coordinates based on edge behavior
-   * For 'wrap': wraps coordinates to valid range
-   * For 'block': returns original coordinates
-   */
-  function normalizeCoords(x: number, y: number): { x: number; y: number } {
-    if (edgeBehavior === 'wrap') {
-      return {
-        x: wrap(x, width),
-        y: wrap(y, height),
-      };
-    }
-    return { x, y };
-  }
 
   return {
     width,
@@ -59,13 +38,13 @@ export function createMap(width: number, height: number, options?: MapOptions): 
     },
 
     getTile(x: number, y: number): TileType {
-      const normalized = normalizeCoords(x, y);
+      const normalized = normalizeCoordinates(x, y, width, height, edgeBehavior);
       const index = this.coordsToIndex(normalized.x, normalized.y);
       return tiles[index];
     },
 
     setTile(x: number, y: number, tile: TileType): void {
-      const normalized = normalizeCoords(x, y);
+      const normalized = normalizeCoordinates(x, y, width, height, edgeBehavior);
       const index = this.coordsToIndex(normalized.x, normalized.y);
       tiles[index] = tile;
     },
@@ -81,7 +60,7 @@ export function createMap(width: number, height: number, options?: MapOptions): 
     blocksMovement(x: number, y: number): boolean {
       // With wrapping, coordinates wrap around rather than blocking
       if (edgeBehavior === 'wrap') {
-        const normalized = normalizeCoords(x, y);
+        const normalized = normalizeCoordinates(x, y, width, height, edgeBehavior);
         return this.getTile(normalized.x, normalized.y) === Tiles.Wall;
       }
 

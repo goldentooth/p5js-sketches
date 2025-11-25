@@ -1,5 +1,6 @@
 export * from './types';
 export * from './bounds';
+export * from './wrapping';
 
 import type p5 from 'p5';
 import type { GridCell, Grid, GridX, GridY, GridHeight, GridWidth, GridIndex } from './types';
