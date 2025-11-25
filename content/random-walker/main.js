@@ -16,11 +16,10 @@ class Walker {
   }
 }
 
-// Glyph templates using palette API
-const glyphs = {
-  wall: Nuglib.glyphFactory('#', [128, 128, 128], [0, 0, 0]),
-  floor: Nuglib.coloredGlyphFactory('.', [0, 0, 0]),
-};
+// Glyph palette
+const palette = new Nuglib.GlyphPalette();
+palette.registerGlyph('wall', '#', [128, 128, 128], [0, 0, 0]);
+palette.registerGlyph('floor', '.', [64, 64, 64], [0, 0, 0]);
 
 let grid;
 let gridRenderer;
@@ -39,7 +38,7 @@ function initGrid() {
   // Create grid and initialize all cells as walls
   grid = Nuglib.createGrid(cols, rows);
   grid.init((cell) => {
-    cell.value = glyphs.wall();
+    cell.value = palette.get('wall');
   });
 
   // Reset walker to center
@@ -66,7 +65,7 @@ function stepWalker() {
 
   // Carve out the floor at walker's position
   const cell = grid.getCell(walker.x, walker.y);
-  cell.value = glyphs.floor(walker.color);
+  cell.value = palette.getWithColor('floor', walker.color);
 }
 
 function setup() {

@@ -23,6 +23,7 @@ new p5(p => {
   let grid;
   let gridRenderer;
   let layerManager;
+  let deltaTimer;
 
   p.setup = () => {
     p.createCanvas(W2, H2);
@@ -44,6 +45,9 @@ new p5(p => {
     layerManager.createLayer('grid', layerConfig);
     layerManager.createLayer('entity', layerConfig);
 
+    // Initialize delta timer
+    deltaTimer = new Nuglib.DeltaTimer({ maxDelta: 0.05 });
+
     grid = Nuglib.createGrid(C, R);
 
     grid.init((cell) => {
@@ -58,12 +62,11 @@ new p5(p => {
     world.addComponent(e, Nuglib.Glyph, Nuglib.withColor('A', [255, 0, 0], [0, 0, 0]));
   };
 
-  let last = 0;
   p.draw = () => {
     p.background(0);
-    const now = p.millis() / 1000;
-    const dt = last ? Math.min(now - last, 0.05) : 0; // clamp for stability
-    last = now;
+
+    // Calculate delta time with automatic clamping
+    const dt = deltaTimer.tick(Nuglib.msToSec(p.millis()));
 
     const gridLayer = layerManager.requireLayer('grid');
     const entityLayer = layerManager.requireLayer('entity');

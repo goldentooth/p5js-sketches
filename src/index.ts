@@ -5,4 +5,5 @@ export * from './glyph';
 export * from './grid';
 export * from './render';
 export * from './rng';
+export * from './time';
 export * from './types';
