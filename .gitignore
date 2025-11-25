@@ -26,3 +26,4 @@ Thumbs.db
 *.swo
 *~
 .hugo_build.lock
+coverage/

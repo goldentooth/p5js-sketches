@@ -8,7 +8,7 @@
     "build:watch": "esbuild src/index.ts --bundle --minify --format=iife --global-name=Nuglib --outfile=static/libraries/nuglib.min.js --watch",
     "test": "vitest --run",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
+    "test:coverage": "vitest --run --coverage",
     "test:watch": "vitest --watch",
     "typecheck": "tsc -p tsconfig.json"
   },
