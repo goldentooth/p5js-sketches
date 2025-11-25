@@ -13,11 +13,15 @@ let rng;
 let world;
 let movementSystem;
 let playerEntity;
+let keyRepeat;
 
 const charHeight = 24;
 const charWidth = 16;
 const cols = 40;
 const rows = 25;
+
+// Use default key mapper (supports arrows, WASD, vi, and numpad)
+const mapKeyToDirection = Nuglib.defaultKeyMapper;
 
 function initMap() {
   // Create RNG with seed
@@ -97,6 +101,12 @@ function setup() {
     'Courier New'
   ));
 
+  // Initialize key repeat handler
+  keyRepeat = new Nuglib.KeyRepeatHandler({
+    initialDelay: 20,  // ~333ms before repeat
+    repeatDelay: 6     // ~100ms between repeats
+  });
+
   // Initialize map with rooms
   initMap();
 }
@@ -104,8 +114,30 @@ function setup() {
 function draw() {
   background(0);
 
+  // Process held keys for continuous movement
+  if (movementSystem && playerEntity && keyRepeat) {
+    const repeatingKeys = keyRepeat.update();
+    for (const { key, keyCode } of repeatingKeys) {
+      const direction = mapKeyToDirection(key, keyCode);
+      if (direction) {
+        movementSystem.queueCommand(playerEntity, {
+          type: 'move',
+          direction: direction
+        });
+        break; // Only process one direction per frame
+      }
+    }
+  }
+
   // Update world systems
-  world.tick();
+  if (world) {
+    world.tick();
+  }
+
+  // Only render if everything is initialized
+  if (!grid || !world || !layerManager) {
+    return;
+  }
 
   // Sync map to grid
   syncMapToGrid();
@@ -129,64 +161,29 @@ function draw() {
 }
 
 function keyPressed() {
-  // Map keys to directions
-  let direction = null;
+  const direction = mapKeyToDirection(key, keyCode);
 
-  // Arrow keys
-  if (keyCode === LEFT_ARROW) {
-    direction = Nuglib.Cardinal.WEST;
-  } else if (keyCode === RIGHT_ARROW) {
-    direction = Nuglib.Cardinal.EAST;
-  } else if (keyCode === UP_ARROW) {
-    direction = Nuglib.Cardinal.NORTH;
-  } else if (keyCode === DOWN_ARROW) {
-    direction = Nuglib.Cardinal.SOUTH;
-  }
-  // WASD
-  else if (key === 'a' || key === 'A') {
-    direction = Nuglib.Cardinal.WEST;
-  } else if (key === 'd' || key === 'D') {
-    direction = Nuglib.Cardinal.EAST;
-  } else if (key === 'w' || key === 'W') {
-    direction = Nuglib.Cardinal.NORTH;
-  } else if (key === 's' || key === 'S') {
-    direction = Nuglib.Cardinal.SOUTH;
-  }
-  // Vi keys
-  else if (key === 'h') {
-    direction = Nuglib.Cardinal.WEST;
-  } else if (key === 'l') {
-    direction = Nuglib.Cardinal.EAST;
-  } else if (key === 'k') {
-    direction = Nuglib.Cardinal.NORTH;
-  } else if (key === 'j') {
-    direction = Nuglib.Cardinal.SOUTH;
-  }
-  // Numpad (diagonals)
-  else if (key === '4') {
-    direction = Nuglib.Cardinal.WEST;
-  } else if (key === '6') {
-    direction = Nuglib.Cardinal.EAST;
-  } else if (key === '8') {
-    direction = Nuglib.Cardinal.NORTH;
-  } else if (key === '2') {
-    direction = Nuglib.Cardinal.SOUTH;
-  } else if (key === '7') {
-    direction = Nuglib.Diagonal.NORTHWEST;
-  } else if (key === '9') {
-    direction = Nuglib.Diagonal.NORTHEAST;
-  } else if (key === '1') {
-    direction = Nuglib.Diagonal.SOUTHWEST;
-  } else if (key === '3') {
-    direction = Nuglib.Diagonal.SOUTHEAST;
-  }
+  if (direction && movementSystem && playerEntity && keyRepeat) {
+    // Track key for repeat
+    keyRepeat.onKeyPressed(key, keyCode);
 
-  // Queue movement command if direction was set
-  if (direction) {
+    // Queue immediate movement on first press
     movementSystem.queueCommand(playerEntity, {
       type: 'move',
       direction: direction
     });
+
     return false; // Prevent default behavior
   }
+}
+
+function keyReleased() {
+  const direction = mapKeyToDirection(key, keyCode);
+
+  if (direction && keyRepeat) {
+    // Stop tracking key
+    keyRepeat.onKeyReleased(key, keyCode);
+  }
+
+  return false;
 }

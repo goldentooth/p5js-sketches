@@ -3,6 +3,7 @@ export * from './controls';
 export * from './ecs';
 export * from './glyph';
 export * from './grid';
+export * from './input';
 export * from './map';
 export * from './movement';
 export * from './p5';
