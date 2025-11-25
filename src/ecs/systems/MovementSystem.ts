@@ -2,6 +2,8 @@ import type { System, World, Entity, Phase } from '../types';
 import type { Map as GameMap } from '../../map/types';
 import type { Direction } from '../../movement/directions';
 import type { Position } from '../components/Position';
+import { toGridX, toGridY } from '../../grid/types';
+import { Components } from '../components';
 
 interface MoveCommand {
   type: 'move';
@@ -55,7 +57,7 @@ export class MovementSystem implements System {
    * Returns true if movement succeeded
    */
   tryMove(world: World, entity: Entity, direction: Direction): boolean {
-    const pos = world.getComponent<Position>(entity, 'Position');
+    const pos = world.getComponent<Position>(entity, Components.Position);
     if (!pos) return false;
 
     let newX = pos.x + direction.dx;
@@ -73,18 +75,18 @@ export class MovementSystem implements System {
 
     // Check if another entity blocks movement at target position
     // Register component if not already registered
-    world.registerComponent('BlocksMovement');
+    world.registerComponent(Components.BlocksMovement);
 
-    for (const other of world.query(['Position', 'BlocksMovement'])) {
-      const otherPos = world.getComponent<Position>(other, 'Position');
+    for (const other of world.query([Components.Position, Components.BlocksMovement])) {
+      const otherPos = world.getComponent<Position>(other, Components.Position);
       if (otherPos && otherPos.x === newX && otherPos.y === newY) {
         return false;
       }
     }
 
     // Move is valid
-    pos.x = newX as any;
-    pos.y = newY as any;
+    pos.x = toGridX(newX);
+    pos.y = toGridY(newY);
     return true;
   }
 
@@ -92,7 +94,7 @@ export class MovementSystem implements System {
    * Process movement commands for all player-controlled entities
    */
   run(world: World): void {
-    for (const entity of world.query(['Position', 'PlayerControlled'])) {
+    for (const entity of world.query([Components.Position, Components.PlayerControlled])) {
       const command = this.getNextCommand(entity);
       if (command && command.type === 'move') {
         this.tryMove(world, entity, command.direction);
