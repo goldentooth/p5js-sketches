@@ -51,7 +51,7 @@ new p5(p => {
     grid = Nuglib.createGrid(C, R);
 
     grid.init((cell) => {
-      cell.value = Nuglib.withColor('#', [150, 150, 150], [0, 0, 0]);
+      cell.value = Nuglib.fromTemplate(Nuglib.Templates.wall);
     });
 
     const e = world.createEntity();

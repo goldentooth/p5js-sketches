@@ -58,7 +58,7 @@ function stepWalker() {
   }
 
   // Check if walker is out of bounds
-  if (walker.x < 0 || walker.y < 0 || walker.x >= cols || walker.y >= rows) {
+  if (!Nuglib.isInBounds(walker.x, walker.y, { width: cols, height: rows })) {
     resetWalker();
     return;
   }
