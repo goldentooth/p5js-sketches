@@ -8,4 +8,8 @@
  */
 
 export * from './types.js';
+export * from './line.js';
 export * from './shadowcasting.js';
+export * from './raycasting.js';
+export * from './diamond-raycasting.js';
+export * from './permissive.js';
