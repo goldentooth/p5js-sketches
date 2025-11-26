@@ -12,8 +12,15 @@ let rooms;
 let rng;
 let world;
 let movementSystem;
+let viewshedSystem;
 let playerEntity;
 let keyRepeat;
+
+// FOV settings
+let fovEnabled = true;
+let fovRange = 10;
+let fovAlgorithm = 'shadowcasting';
+let permissiveness = 2;
 
 const charHeight = 24;
 const charWidth = 16;
@@ -47,6 +54,10 @@ function initMap() {
   movementSystem = new Nuglib.MovementSystem(map);
   world.addSystem(movementSystem);
 
+  // Add viewshed system
+  viewshedSystem = new Nuglib.ViewshedSystem(map);
+  world.addSystem(viewshedSystem);
+
   // Create player entity at first room's center
   const startRoom = rooms[0];
   const startPos = startRoom.center();
@@ -56,18 +67,35 @@ function initMap() {
   world.addComponent(playerEntity, 'Glyph', palette.get('player'));
   world.addComponent(playerEntity, 'PlayerControlled', {});
 
+  // Add FOV components
+  world.addComponent(playerEntity, 'Viewshed', {
+    range: fovRange,
+    algorithm: fovAlgorithm,
+    visibleCells: new Set(),
+    dirty: true,
+    permissiveness: permissiveness
+  });
+  world.addComponent(playerEntity, 'Memory', {
+    exploredCells: new Set()
+  });
+
   // Sync map to grid for rendering
   syncMapToGrid();
 }
 
 function syncMapToGrid() {
-  grid.init((cell) => {
-    const tile = map.getTile(cell.x, cell.y);
-    if (tile === Nuglib.Tiles.Wall) {
-      cell.value = palette.get('wall');
-    } else if (tile === Nuglib.Tiles.Floor) {
-      cell.value = palette.get('floor');
-    }
+  // Use library utility for fog of war rendering
+  Nuglib.syncMapToGridWithFov({
+    grid,
+    map,
+    palette,
+    world,
+    viewerEntity: playerEntity,
+    fovEnabled,
+    tileGlyphs: new Map([
+      [Nuglib.Tiles.Wall, 'wall'],
+      [Nuglib.Tiles.Floor, 'floor']
+    ])
   });
 }
 
@@ -109,6 +137,72 @@ function setup() {
 
   // Initialize map with rooms
   initMap();
+
+  // Bind UI controls
+  bindControls();
+
+  // Prevent scroll on movement keys (using library utility)
+  Nuglib.preventMovementKeyScroll(mapKeyToDirection);
+}
+
+function bindControls() {
+  // FOV toggle checkbox
+  const fovCheckbox = document.getElementById('fov-enabled');
+  if (fovCheckbox) {
+    fovCheckbox.addEventListener('change', (e) => {
+      fovEnabled = e.target.checked;
+    });
+  }
+
+  // Algorithm dropdown
+  const algorithmSelect = document.getElementById('algorithm-select');
+  if (algorithmSelect) {
+    algorithmSelect.addEventListener('change', (e) => {
+      fovAlgorithm = e.target.value;
+      updateViewshedSettings();
+      updatePermissivenessVisibility();
+    });
+  }
+
+  // Range slider
+  const rangeSlider = document.getElementById('range-slider');
+  const rangeValue = document.getElementById('range-value');
+  if (rangeSlider && rangeValue) {
+    rangeSlider.addEventListener('input', (e) => {
+      fovRange = parseInt(e.target.value);
+      rangeValue.textContent = fovRange;
+      updateViewshedSettings();
+    });
+  }
+
+  // Permissiveness slider
+  const permissivenessSlider = document.getElementById('permissiveness-slider');
+  const permissivenessValue = document.getElementById('permissiveness-value');
+  if (permissivenessSlider && permissivenessValue) {
+    permissivenessSlider.addEventListener('input', (e) => {
+      permissiveness = parseInt(e.target.value);
+      permissivenessValue.textContent = permissiveness;
+      updateViewshedSettings();
+    });
+  }
+
+  // Regenerate button
+  const regenerateBtn = document.getElementById('regenerate-btn');
+  if (regenerateBtn) {
+    regenerateBtn.addEventListener('click', () => {
+      initMap();
+    });
+  }
+
+  // Set initial permissiveness visibility
+  updatePermissivenessVisibility();
+}
+
+function updatePermissivenessVisibility() {
+  const permissivenessControl = document.getElementById('permissiveness-control');
+  if (permissivenessControl) {
+    permissivenessControl.style.display = fovAlgorithm === 'permissive' ? 'block' : 'none';
+  }
 }
 
 function draw() {
@@ -142,17 +236,8 @@ function draw() {
   // Sync map to grid
   syncMapToGrid();
 
-  // Render entities with Position and Glyph components
-  for (const entity of world.query(['Position', 'Glyph'])) {
-    const pos = world.getComponent(entity, 'Position');
-    const glyph = world.getComponent(entity, 'Glyph');
-    if (pos && glyph) {
-      const cell = grid.getCell(pos.x, pos.y);
-      if (cell) {
-        cell.value = glyph;
-      }
-    }
-  }
+  // Render entities with fog of war filtering
+  Nuglib.renderEntitiesWithFov(grid, world, playerEntity, fovEnabled);
 
   // Render the grid using layer manager
   const gridLayer = layerManager.requireLayer('grid');
@@ -160,7 +245,19 @@ function draw() {
   layerManager.render();
 }
 
+function updateViewshedSettings() {
+  if (!playerEntity || !world) return;
+
+  // Use library utility to update viewshed
+  Nuglib.updateViewshedSettings(world, playerEntity, {
+    range: fovRange,
+    algorithm: fovAlgorithm,
+    permissiveness: permissiveness
+  });
+}
+
 function keyPressed() {
+  // Handle movement keys
   const direction = mapKeyToDirection(key, keyCode);
 
   if (direction && movementSystem && playerEntity && keyRepeat) {
@@ -173,7 +270,7 @@ function keyPressed() {
       direction: direction
     });
 
-    return false; // Prevent default behavior
+    return false; // Prevent default browser behavior (scrolling, etc.)
   }
 }
 

@@ -7,4 +7,6 @@ export {
   isMovementKey,
   KeyMappingPresets,
 } from './KeyboardMapping';
-export type { KeyMappingConfig } from './KeyboardMapping';
+export type { KeyMappingConfig, KeyMapper } from './KeyboardMapping';
+
+export { preventMovementKeyScroll } from './scroll-prevention';

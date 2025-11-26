@@ -12,7 +12,7 @@ controls: |
   <button id="step-btn" class="control-button">Step</button>
   <button id="clear-btn" class="control-button">Clear</button>
   <label for="speed-slider">Speed: <span id="speed-value">1</span></label>
-  <input type="range" id="speed-slider" class="control-slider" min="1" max="10" value="1">
+  <input type="range" id="speed-slider" class="control-slider" min="1" max="50" value="1">
 technical_details: |
   <ul>
     <li><strong>Algorithm:</strong> In this algorithm, also called a "Drunkard's Walk," we just start in the middle and walk, moving each step in a random direction. It's not terribly elegant, nor does it match the typical room-and-hallway structure we expect to see in a roguelike, but it does guarantee that each traversable tile is reachable from all others.</li>

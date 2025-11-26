@@ -16,6 +16,11 @@ export interface KeyMappingConfig {
 }
 
 /**
+ * Function that maps keyboard input to direction vectors
+ */
+export type KeyMapper = (key: string, keyCode: number) => Direction | null;
+
+/**
  * Maps keyboard input to direction vectors.
  *
  * Supports multiple keyboard layouts:
