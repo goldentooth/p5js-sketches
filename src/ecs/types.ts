@@ -52,6 +52,12 @@ export interface World {
   // Add a system to the world
   addSystem(sys: System): void;
 
+  // Add a resource to the world (global state not attached to entities)
+  addResource<T>(key: string, resource: T): void;
+
+  // Get a resource from the world
+  getResource<T>(key: string): T | undefined;
+
   // Update the world
   tick(dt: number, p?: p5): void;
 }

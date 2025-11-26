@@ -1,9 +1,12 @@
+export * from './Action';
 export * from './BlocksMovement';
+export * from './Energy';
 export * from './Glyph';
+export * from './Memory';
 export * from './PlayerControlled';
 export * from './Position';
+export * from './Speed';
 export * from './Viewshed';
-export * from './Memory';
 
 /**
  * Type-safe component key registry
@@ -17,12 +20,15 @@ export * from './Memory';
  * world.addComponent(entity, Components.Position, {x: 5, y: 5})
  */
 export const Components = {
-  Position: 'Position',
-  PlayerControlled: 'PlayerControlled',
+  Action: 'Action',
   BlocksMovement: 'BlocksMovement',
+  Energy: 'Energy',
   Glyph: 'Glyph',
-  Viewshed: 'Viewshed',
   Memory: 'Memory',
+  PlayerControlled: 'PlayerControlled',
+  Position: 'Position',
+  Speed: 'Speed',
+  Viewshed: 'Viewshed',
 } as const;
 
 // Note: Existing tests may use lowercase keys. Both are supported for backward compatibility.

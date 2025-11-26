@@ -9,6 +9,7 @@ export function createWorld(): World {
   const registry = new Map<string, number>();
   const systemsByPhase = new Map<Phase, System[]>();
   PHASE_ORDER.forEach(ph => systemsByPhase.set(ph, []));
+  const resources = new Map<string, any>();
 
   const signature = new Map<Entity, number>();
 
@@ -100,6 +101,14 @@ export function createWorld(): World {
     systemsByPhase.get(sys.phase)!.push(sys);
   }
 
+  function addResource<T>(key: string, resource: T): void {
+    resources.set(key, resource);
+  }
+
+  function getResource<T>(key: string): T | undefined {
+    return resources.get(key) as T | undefined;
+  }
+
   function tick(dt: number, p?: p5, layer?: p5.Graphics): void {
     for (const phase of PHASE_ORDER) {
       for (const sys of systemsByPhase.get(phase)!) {
@@ -118,6 +127,8 @@ export function createWorld(): World {
     query,
     getStore,
     addSystem,
+    addResource,
+    getResource,
     tick,
   };
 

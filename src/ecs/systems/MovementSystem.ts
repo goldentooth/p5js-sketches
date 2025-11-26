@@ -7,39 +7,55 @@ import { toGridX, toGridY } from '../../grid/types';
 import { Components } from '../components';
 import { normalizeCoordinates } from '../../grid/wrapping';
 
+/**
+ * System that handles movement logic for entities.
+ * Movement is now triggered via Action components, not direct commands.
+ * This system provides the tryMove() method used by ActionExecutionSystem.
+ */
 interface MoveCommand {
   type: 'move';
   direction: Direction;
 }
 
-/**
- * System that processes movement commands for player-controlled entities
- */
 export class MovementSystem implements System {
   phase: Phase = 'update';
-  private commandQueues: Map<Entity, MoveCommand[]> = new Map();
+  private world: World | null = null;
+  private legacyCommandQueue?: Map<Entity, MoveCommand[]>;
 
   constructor(private map: GameMap) {}
 
   /**
-   * Queue a movement command for an entity
+   * Queue a movement command.
+   * This is a compatibility method for tests and legacy code that executes immediately.
+   * For energy-based movement, use world.addComponent(entity, Components.Action, ...) directly.
+   * @deprecated Use Action components with energy system for turn-based movement
    */
-  queueCommand(entity: Entity, command: MoveCommand): void {
-    if (!this.commandQueues.has(entity)) {
-      this.commandQueues.set(entity, []);
+  queueCommand(entity: Entity, command: { type: 'move'; direction: Direction }): void {
+    if (!this.world) {
+      // Queue for later processing when run() is called
+      if (!this.legacyCommandQueue) {
+        this.legacyCommandQueue = new Map();
+      }
+      if (!this.legacyCommandQueue.has(entity)) {
+        this.legacyCommandQueue.set(entity, []);
+      }
+      this.legacyCommandQueue.get(entity)!.push(command);
+      return;
     }
-    this.commandQueues.get(entity)!.push(command);
-  }
 
-  /**
-   * Get the next queued command for an entity
-   */
-  private getNextCommand(entity: Entity): MoveCommand | null {
-    const queue = this.commandQueues.get(entity);
-    if (!queue || queue.length === 0) {
-      return null;
+    // Check if entity has Energy component (new system)
+    const energy = this.world.getComponent(entity, Components.Energy);
+    if (energy) {
+      // Use new energy-based system
+      this.world.addComponent(entity, Components.Action, {
+        type: command.type,
+        direction: command.direction,
+        energyCost: 100,
+      });
+    } else {
+      // Use legacy immediate execution for backward compatibility
+      this.tryMove(this.world, entity, command.direction);
     }
-    return queue.shift()!;
   }
 
   /**
@@ -94,14 +110,24 @@ export class MovementSystem implements System {
   }
 
   /**
-   * Process movement commands for all player-controlled entities
+   * MovementSystem no longer processes its own actions by default.
+   * Movement is handled by ActionExecutionSystem calling tryMove().
+   * For backward compatibility, processes ONE command per entity per tick from legacy queue.
    */
   run(world: World): void {
-    for (const entity of world.query([Components.Position, Components.PlayerControlled])) {
-      const command = this.getNextCommand(entity);
-      if (command && command.type === 'move') {
-        this.tryMove(world, entity, command.direction);
+    // Store world reference for queueCommand compatibility
+    this.world = world;
+
+    // Process legacy command queue for backward compatibility (one command per entity per tick)
+    if (this.legacyCommandQueue) {
+      for (const [entity, commands] of this.legacyCommandQueue) {
+        if (commands.length > 0) {
+          const command = commands.shift()!;
+          this.tryMove(world, entity, command.direction);
+        }
       }
     }
+
+    // Modern path: Actions are processed by ActionExecutionSystem
   }
 }

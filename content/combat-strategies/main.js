@@ -54,11 +54,24 @@ function initMap() {
   // Create ECS world
   world = Nuglib.createWorld();
 
-  // Add movement system
+  // Add GameClock resource for turn-based timing
+  world.addResource('GameClock', Nuglib.createGameClock());
+
+  // Add systems in correct phase order
+  // Early phase: Input handling and energy regeneration
+  const awaitingInputSystem = new Nuglib.AwaitingInputSystem();
+  world.addSystem(awaitingInputSystem);
+
+  const energyRegenSystem = new Nuglib.EnergyRegenerationSystem();
+  world.addSystem(energyRegenSystem);
+
+  // Update phase: Movement and FOV
   movementSystem = new Nuglib.MovementSystem(map);
   world.addSystem(movementSystem);
 
-  // Add viewshed system
+  const actionExecutionSystem = new Nuglib.ActionExecutionSystem(movementSystem);
+  world.addSystem(actionExecutionSystem);
+
   viewshedSystem = new Nuglib.ViewshedSystem(map);
   world.addSystem(viewshedSystem);
 
@@ -70,6 +83,18 @@ function initMap() {
   world.addComponent(playerEntity, 'Position', { x: startPos.x, y: startPos.y });
   world.addComponent(playerEntity, 'Glyph', palette.get('player'));
   world.addComponent(playerEntity, 'PlayerControlled', {});
+
+  // Add Energy component for turn-based system
+  world.addComponent(playerEntity, 'Energy', {
+    current: 100,
+    max: 100,
+    regenRate: 100, // Regenerate full energy each turn for responsive controls
+  });
+
+  // Add Speed component (1.0 = normal speed)
+  world.addComponent(playerEntity, 'Speed', {
+    multiplier: 1.0,
+  });
 
   // Add FOV components
   world.addComponent(playerEntity, 'Viewshed', {
@@ -165,15 +190,21 @@ function draw() {
   background(0);
 
   // Process held keys for continuous movement
-  if (movementSystem && playerEntity && keyRepeat) {
+  if (world && playerEntity && keyRepeat) {
     const repeatingKeys = keyRepeat.update();
     for (const { key, keyCode } of repeatingKeys) {
       const direction = mapKeyToDirection(key, keyCode);
       if (direction) {
-        movementSystem.queueCommand(playerEntity, {
-          type: 'move',
-          direction: direction
-        });
+        // Check if player already has an action queued
+        const existingAction = world.getComponent(playerEntity, 'Action');
+        if (!existingAction) {
+          // Add Action component for turn-based movement
+          world.addComponent(playerEntity, 'Action', {
+            type: 'move',
+            direction: direction,
+            energyCost: 100, // Movement costs 100 energy
+          });
+        }
         break; // Only process one direction per frame
       }
     }
@@ -205,15 +236,20 @@ function keyPressed() {
   // Handle movement keys
   const direction = mapKeyToDirection(key, keyCode);
 
-  if (direction && movementSystem && playerEntity && keyRepeat) {
+  if (direction && world && playerEntity && keyRepeat) {
     // Track key for repeat
     keyRepeat.onKeyPressed(key, keyCode);
 
-    // Queue immediate movement on first press
-    movementSystem.queueCommand(playerEntity, {
-      type: 'move',
-      direction: direction
-    });
+    // Check if player already has an action queued
+    const existingAction = world.getComponent(playerEntity, 'Action');
+    if (!existingAction) {
+      // Add Action component for turn-based movement
+      world.addComponent(playerEntity, 'Action', {
+        type: 'move',
+        direction: direction,
+        energyCost: 100,
+      });
+    }
 
     return false; // Prevent default browser behavior (scrolling, etc.)
   }

@@ -4,23 +4,29 @@ import { createWorld, Components } from '../src';
 describe('Component Registry', () => {
   describe('Components constant', () => {
     it('should export all component keys', () => {
-      expect(Components.Position).toBe('Position');
-      expect(Components.PlayerControlled).toBe('PlayerControlled');
+      expect(Components.Action).toBe('Action');
       expect(Components.BlocksMovement).toBe('BlocksMovement');
+      expect(Components.Energy).toBe('Energy');
       expect(Components.Glyph).toBe('Glyph');
-      expect(Components.Viewshed).toBe('Viewshed');
       expect(Components.Memory).toBe('Memory');
+      expect(Components.PlayerControlled).toBe('PlayerControlled');
+      expect(Components.Position).toBe('Position');
+      expect(Components.Speed).toBe('Speed');
+      expect(Components.Viewshed).toBe('Viewshed');
     });
 
     it('should provide all expected component keys', () => {
       const keys = Object.keys(Components);
-      expect(keys).toContain('Position');
-      expect(keys).toContain('PlayerControlled');
+      expect(keys).toContain('Action');
       expect(keys).toContain('BlocksMovement');
+      expect(keys).toContain('Energy');
       expect(keys).toContain('Glyph');
-      expect(keys).toContain('Viewshed');
       expect(keys).toContain('Memory');
-      expect(keys.length).toBe(6);
+      expect(keys).toContain('PlayerControlled');
+      expect(keys).toContain('Position');
+      expect(keys).toContain('Speed');
+      expect(keys).toContain('Viewshed');
+      expect(keys.length).toBe(9);
     });
   });
 
