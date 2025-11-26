@@ -27,3 +27,4 @@ Thumbs.db
 *~
 .hugo_build.lock
 coverage/
+IMPLEMENTATION_PLAN.md
