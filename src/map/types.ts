@@ -61,6 +61,9 @@ export interface Map {
 
   /** Check if a tile blocks movement */
   blocksMovement(x: number, y: number): boolean;
+
+  /** Check if a tile blocks vision (for FOV calculations) */
+  blocksVision(x: number, y: number): boolean;
 }
 
 /**

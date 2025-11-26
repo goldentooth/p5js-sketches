@@ -9,6 +9,7 @@ describe('Component Registry', () => {
       expect(Components.BlocksMovement).toBe('BlocksMovement');
       expect(Components.Glyph).toBe('Glyph');
       expect(Components.Viewshed).toBe('Viewshed');
+      expect(Components.Memory).toBe('Memory');
     });
 
     it('should provide all expected component keys', () => {
@@ -18,7 +19,8 @@ describe('Component Registry', () => {
       expect(keys).toContain('BlocksMovement');
       expect(keys).toContain('Glyph');
       expect(keys).toContain('Viewshed');
-      expect(keys.length).toBe(5);
+      expect(keys).toContain('Memory');
+      expect(keys.length).toBe(6);
     });
   });
 

@@ -2,6 +2,7 @@ import type { System, World, Entity, Phase } from '../types';
 import type { Map as GameMap } from '../../map/types';
 import type { Direction } from '../../movement/directions';
 import type { Position } from '../components/Position';
+import type { Viewshed } from '../components/Viewshed';
 import { toGridX, toGridY } from '../../grid/types';
 import { Components } from '../components';
 import { normalizeCoordinates } from '../../grid/wrapping';
@@ -82,6 +83,13 @@ export class MovementSystem implements System {
     // Move is valid
     pos.x = toGridX(newX);
     pos.y = toGridY(newY);
+
+    // Mark viewshed as dirty if entity has one
+    const viewshed = world.getComponent<Viewshed>(entity, Components.Viewshed);
+    if (viewshed) {
+      viewshed.dirty = true;
+    }
+
     return true;
   }
 

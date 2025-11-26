@@ -73,6 +73,12 @@ export function createMap(width: number, height: number, options?: MapOptions): 
       // Check if the tile itself blocks movement
       return this.getTile(x, y) === Tiles.Wall;
     },
+
+    blocksVision(x: number, y: number): boolean {
+      // By default, vision blocking follows the same rules as movement blocking
+      // (walls block both movement and vision)
+      return this.blocksMovement(x, y);
+    },
   };
 }
 
