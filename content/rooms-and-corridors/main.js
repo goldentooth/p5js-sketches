@@ -22,6 +22,15 @@ let fovRange = 10;
 let fovAlgorithm = 'shadowcasting';
 let permissiveness = 2;
 
+// Column settings
+let columnsEnabled = true;
+let columnDensity = 0.6;
+
+// Map generation settings
+let roomCount = 6;
+let minRoomSize = 5;
+let maxRoomSize = 12;
+
 const charHeight = 24;
 const charWidth = 16;
 const cols = 40;
@@ -40,12 +49,33 @@ function initMap() {
 
   // Generate rooms and corridors procedurally
   rooms = Nuglib.generateRoomsAndCorridors(map, rng, {
-    maxRooms: 6,
-    minRoomSize: 3,
-    maxRoomSize: 8,
+    maxRooms: roomCount,
+    minRoomSize: minRoomSize,
+    maxRoomSize: maxRoomSize,
   });
 
   console.log(`Generated ${rooms.length} rooms`);
+
+  // Log room sizes for debugging
+  rooms.forEach((room, i) => {
+    console.log(`  Room ${i}: ${room.width}x${room.height}`);
+  });
+
+  // Generate columns/pillars in rooms if enabled
+  if (columnsEnabled) {
+    const columnsByRoom = Nuglib.generateColumns(map, rooms, rng, {
+      minRoomSize: { width: 7, height: 7 },
+      columnSize: { min: 1, max: 2 },
+      spacing: { min: 3, max: 4 },
+      density: columnDensity,
+      edgeBuffer: 1,
+      corridorBuffer: 1,  // Reduced from 2 to allow columns in smaller rooms
+    });
+
+    let totalColumns = 0;
+    columnsByRoom.forEach(cols => totalColumns += cols.length);
+    console.log(`Generated ${totalColumns} columns in ${columnsByRoom.size} rooms (min room size: 7x7, density: ${Math.round(columnDensity * 100)}%)`);
+  }
 
   // Create ECS world
   world = Nuglib.createWorld();
@@ -191,6 +221,77 @@ function bindControls() {
   if (regenerateBtn) {
     regenerateBtn.addEventListener('click', () => {
       initMap();
+    });
+  }
+
+  // Columns toggle checkbox
+  const columnsCheckbox = document.getElementById('columns-enabled');
+  if (columnsCheckbox) {
+    columnsCheckbox.addEventListener('change', (e) => {
+      columnsEnabled = e.target.checked;
+      initMap(); // Regenerate map with/without columns
+    });
+  }
+
+  // Column density slider
+  const densitySlider = document.getElementById('density-slider');
+  const densityValue = document.getElementById('density-value');
+  if (densitySlider && densityValue) {
+    densitySlider.addEventListener('input', (e) => {
+      columnDensity = parseFloat(e.target.value);
+      densityValue.textContent = Math.round(columnDensity * 100) + '%';
+      if (columnsEnabled) {
+        initMap(); // Regenerate map with new density
+      }
+    });
+  }
+
+  // Room count slider
+  const roomCountSlider = document.getElementById('room-count-slider');
+  const roomCountValue = document.getElementById('room-count-value');
+  if (roomCountSlider && roomCountValue) {
+    roomCountSlider.addEventListener('input', (e) => {
+      roomCount = parseInt(e.target.value);
+      roomCountValue.textContent = roomCount;
+      initMap(); // Regenerate map with new room count
+    });
+  }
+
+  // Min room size slider
+  const minRoomSlider = document.getElementById('min-room-slider');
+  const minRoomValue = document.getElementById('min-room-value');
+  if (minRoomSlider && minRoomValue) {
+    minRoomSlider.addEventListener('input', (e) => {
+      minRoomSize = parseInt(e.target.value);
+      minRoomValue.textContent = minRoomSize;
+      // Ensure min doesn't exceed max
+      if (minRoomSize > maxRoomSize) {
+        maxRoomSize = minRoomSize;
+        const maxSlider = document.getElementById('max-room-slider');
+        const maxValue = document.getElementById('max-room-value');
+        if (maxSlider) maxSlider.value = maxRoomSize;
+        if (maxValue) maxValue.textContent = maxRoomSize;
+      }
+      initMap(); // Regenerate map with new size
+    });
+  }
+
+  // Max room size slider
+  const maxRoomSlider = document.getElementById('max-room-slider');
+  const maxRoomValue = document.getElementById('max-room-value');
+  if (maxRoomSlider && maxRoomValue) {
+    maxRoomSlider.addEventListener('input', (e) => {
+      maxRoomSize = parseInt(e.target.value);
+      maxRoomValue.textContent = maxRoomSize;
+      // Ensure max doesn't go below min
+      if (maxRoomSize < minRoomSize) {
+        minRoomSize = maxRoomSize;
+        const minSlider = document.getElementById('min-room-slider');
+        const minValue = document.getElementById('min-room-value');
+        if (minSlider) minSlider.value = minRoomSize;
+        if (minValue) minValue.textContent = minRoomSize;
+      }
+      initMap(); // Regenerate map with new size
     });
   }
 

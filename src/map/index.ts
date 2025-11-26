@@ -1,5 +1,6 @@
 export * from './types';
 export * from './queries';
+export * from './columns';
 
 import type { Map, MapOptions, TileType, Room, GenerationOptions } from './types';
 import { Tiles } from './types';
