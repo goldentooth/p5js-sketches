@@ -63,7 +63,7 @@ export function wouldBeOutOfBounds(
 
 /**
  * Get all neighboring coordinates that are within bounds
- * @param includesDiagonal - if true, includes diagonal neighbors (8-way), otherwise cardinal only (4-way)
+ * @param includeDiagonal - if true, includes diagonal neighbors (8-way), otherwise cardinal only (4-way)
  */
 export function getNeighborsInBounds(
   x: GridX,

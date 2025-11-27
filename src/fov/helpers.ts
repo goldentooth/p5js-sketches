@@ -9,6 +9,7 @@ import type { World, Entity } from '../ecs/types.js';
 import type { Map as GameMap } from '../map/types.js';
 import type { Grid, GridX, GridY } from '../grid/types.js';
 import type { Viewshed } from '../ecs/components/Viewshed.js';
+import type { Glyph } from '../ecs/components/Glyph.js';
 import type { FovAlgorithm } from './types.js';
 import { Components } from '../ecs/components/index.js';
 import { getVisibilityState } from './visibility.js';
@@ -73,23 +74,29 @@ export function updateViewshedSettings(
 }
 
 /**
- * Glyph data structure (compatible with GlyphPalette)
- * Note: This is a local interface for type checking. Use the actual Glyph
- * type from the glyph module in your code.
+ * Simplified glyph data structure for FOV helpers
+ *
+ * This is a minimal interface compatible with the full Glyph component.
+ * Colors are represented as RGB tuples for efficient manipulation during FOV calculations.
+ *
+ * @see {@link Glyph} for the full ECS component type
  */
-interface Glyph {
+export interface FovGlyph {
   char: string;
   fg: [number, number, number];
   bg: [number, number, number];
 }
 
 /**
- * Palette interface for getting glyphs by name
- * Note: This is a local interface for type checking. Use the actual GlyphPalette
- * class from the glyph module in your code.
+ * Minimal palette interface for retrieving glyphs by name
+ *
+ * This interface is compatible with the GlyphPalette class but uses simplified
+ * FovGlyph types for efficient color manipulation during FOV rendering.
+ *
+ * @see {@link GlyphPalette} for the full palette implementation
  */
-interface GlyphPalette {
-  get(name: string): Glyph;
+export interface FovGlyphPalette {
+  get(name: string): FovGlyph;
 }
 
 /**
@@ -103,7 +110,7 @@ export interface SyncMapToGridOptions {
   map: GameMap;
 
   /** Glyph palette for rendering tiles */
-  palette: GlyphPalette;
+  palette: FovGlyphPalette;
 
   /** ECS world (required if FOV is enabled) */
   world?: World;

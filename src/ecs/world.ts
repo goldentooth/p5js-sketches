@@ -3,6 +3,52 @@ import type { Entity, World, System, Phase } from './types';
 
 const PHASE_ORDER: Phase[] = ['early', 'update', 'late', 'render'];
 
+/**
+ * Creates a new ECS (Entity Component System) world
+ *
+ * The world is the core of the ECS architecture, managing entities, components, systems,
+ * and resources. It uses bitmasking for efficient component queries (supports up to 31
+ * component types with 32-bit signatures).
+ *
+ * **Architecture:**
+ * - **Entities**: Unique numeric IDs
+ * - **Components**: Data stored in per-type Maps keyed by entity ID
+ * - **Systems**: Logic that runs in phases (early → update → late → render)
+ * - **Resources**: Global singleton data (clock, input state, etc.)
+ *
+ * @returns World object with methods for entity/component/system management
+ *
+ * @example
+ * ```typescript
+ * const world = createWorld();
+ *
+ * // Register components (automatic on first use)
+ * const player = world.createEntity();
+ * world.addComponent(player, 'Position', { x: 0, y: 0 });
+ * world.addComponent(player, 'Health', { current: 100, max: 100 });
+ *
+ * // Query entities with specific components
+ * for (const entity of world.query(['Position', 'Health'])) {
+ *   const pos = world.getComponent(entity, 'Position');
+ *   const health = world.getComponent(entity, 'Health');
+ *   console.log(`Entity at (${pos.x}, ${pos.y}) has ${health.current} HP`);
+ * }
+ *
+ * // Add systems
+ * world.addSystem({
+ *   phase: 'update',
+ *   run: (world, dt) => {
+ *     // System logic runs each tick
+ *   }
+ * });
+ *
+ * // Add resources
+ * world.addResource('GameClock', createGameClock());
+ *
+ * // Run one simulation tick (executes all systems in phase order)
+ * world.tick(deltaTime);
+ * ```
+ */
 export function createWorld(): World {
   let nextId = 1;
   const stores = new Map<string, Map<Entity, any>>();
