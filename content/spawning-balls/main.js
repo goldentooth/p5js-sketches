@@ -9,25 +9,49 @@ let balls = [];
 let ballRadius = 8;
 let maxBalls = 50;
 let centerX, centerY;
+let trailsEnabled = false;
+let trailLength = 20;
 
 class Ball {
-  constructor(x, y, vx, vy, radius) {
+  constructor(x, y, vx, vy, radius, parentColor1 = null, parentColor2 = null) {
     this.pos = createVector(x, y);
     this.vel = createVector(vx, vy);
     this.radius = radius;
-    this.col = color(
-      random(100, 255),
-      random(100, 255),
-      random(100, 255)
-    );
+    this.col = this.generateColor(parentColor1, parentColor2);
     this.spawnCooldown = SPAWN_COOLDOWN_FRAMES;
+    this.trail = [];
+    this.spawnScale = 1.8; // Start enlarged for pulse effect
+  }
+
+  generateColor(parent1, parent2) {
+    if (parent1 && parent2) {
+      // Blend parent colors with slight random variation
+      const r = (red(parent1) + red(parent2)) / 2 + random(-20, 20);
+      const g = (green(parent1) + green(parent2)) / 2 + random(-20, 20);
+      const b = (blue(parent1) + blue(parent2)) / 2 + random(-20, 20);
+      return color(constrain(r, 50, 255), constrain(g, 50, 255), constrain(b, 50, 255));
+    }
+    return color(random(100, 255), random(100, 255), random(100, 255));
   }
 
   update() {
+    // Track trail
+    this.trail.push(this.pos.copy());
+    if (this.trail.length > trailLength) {
+      this.trail.shift();
+    }
+
     this.pos.add(this.vel);
     this.bounceOffBoundary();
+
     if (this.spawnCooldown > 0) {
       this.spawnCooldown--;
+    }
+
+    // Decay spawn pulse
+    if (this.spawnScale > 1) {
+      this.spawnScale = lerp(this.spawnScale, 1, 0.15);
+      if (this.spawnScale < 1.01) this.spawnScale = 1;
     }
   }
 
@@ -66,10 +90,35 @@ class Ball {
     }
   }
 
+  drawTrail() {
+    if (!trailsEnabled || this.trail.length < 2) return;
+
+    noFill();
+    for (let i = 1; i < this.trail.length; i++) {
+      const alpha = map(i, 0, this.trail.length, 0, 150);
+      const weight = map(i, 0, this.trail.length, 1, this.radius * 1.5);
+      stroke(red(this.col), green(this.col), blue(this.col), alpha);
+      strokeWeight(weight);
+      line(this.trail[i - 1].x, this.trail[i - 1].y, this.trail[i].x, this.trail[i].y);
+    }
+  }
+
   draw() {
+    this.drawTrail();
+
+    // Apply spawn pulse scale
+    const displayRadius = this.radius * this.spawnScale;
+
     fill(this.col);
     noStroke();
-    ellipse(this.pos.x, this.pos.y, this.radius * 2);
+    ellipse(this.pos.x, this.pos.y, displayRadius * 2);
+
+    // Glow effect during pulse
+    if (this.spawnScale > 1.05) {
+      const glowAlpha = map(this.spawnScale, 1, 1.8, 0, 100);
+      fill(red(this.col), green(this.col), blue(this.col), glowAlpha);
+      ellipse(this.pos.x, this.pos.y, displayRadius * 3);
+    }
   }
 
   collidesWith(other) {
@@ -114,7 +163,7 @@ function resolveCollision(ball1, ball2) {
   return true;
 }
 
-function spawnBall(x, y) {
+function spawnBall(x, y, parentColor1 = null, parentColor2 = null) {
   if (balls.length >= maxBalls) return;
 
   // Random velocity direction
@@ -123,7 +172,7 @@ function spawnBall(x, y) {
   const vx = cos(angle) * speed;
   const vy = sin(angle) * speed;
 
-  balls.push(new Ball(x, y, vx, vy, ballRadius));
+  balls.push(new Ball(x, y, vx, vy, ballRadius, parentColor1, parentColor2));
   updateCountDisplay();
 }
 
@@ -139,21 +188,25 @@ function createInitialBalls() {
 
   // Two balls starting near center with opposite velocities
   const offset = 50;
-  balls.push(new Ball(
+  const ball1 = new Ball(
     centerX - offset,
     centerY,
     INITIAL_SPEED,
     random(-1, 1),
     ballRadius
-  ));
-  balls.push(new Ball(
+  );
+  ball1.spawnScale = 1; // No pulse for initial balls
+
+  const ball2 = new Ball(
     centerX + offset,
     centerY,
     -INITIAL_SPEED,
     random(-1, 1),
     ballRadius
-  ));
+  );
+  ball2.spawnScale = 1; // No pulse for initial balls
 
+  balls.push(ball1, ball2);
   updateCountDisplay();
 }
 
@@ -188,6 +241,22 @@ function setup() {
     resetBtn.addEventListener('click', createInitialBalls);
   }
 
+  const trailsCheckbox = document.getElementById('trails-checkbox');
+  if (trailsCheckbox) {
+    trailsCheckbox.addEventListener('change', () => {
+      trailsEnabled = trailsCheckbox.checked;
+    });
+  }
+
+  const trailSlider = document.getElementById('trail-slider');
+  const trailValue = document.getElementById('trail-value');
+  if (trailSlider) {
+    trailSlider.addEventListener('input', () => {
+      trailLength = parseInt(trailSlider.value);
+      trailValue.textContent = trailLength;
+    });
+  }
+
   createInitialBalls();
 }
 
@@ -206,7 +275,7 @@ function draw() {
   }
 
   // Check collisions between balls
-  const newBallPositions = [];
+  const newBallSpawns = [];
   for (let i = 0; i < balls.length; i++) {
     for (let j = i + 1; j < balls.length; j++) {
       if (balls[i].collidesWith(balls[j])) {
@@ -215,8 +284,12 @@ function draw() {
         // Only spawn if both balls can spawn (cooldown expired)
         if (didCollide &&
             balls[i].canSpawn() && balls[j].canSpawn() &&
-            balls.length + newBallPositions.length < maxBalls) {
-          newBallPositions.push(collisionPoint);
+            balls.length + newBallSpawns.length < maxBalls) {
+          newBallSpawns.push({
+            pos: collisionPoint,
+            color1: balls[i].col,
+            color2: balls[j].col
+          });
           balls[i].resetCooldown();
           balls[j].resetCooldown();
         }
@@ -225,8 +298,8 @@ function draw() {
   }
 
   // Spawn new balls after collision checks
-  for (const pos of newBallPositions) {
-    spawnBall(pos.x, pos.y);
+  for (const spawn of newBallSpawns) {
+    spawnBall(spawn.pos.x, spawn.pos.y, spawn.color1, spawn.color2);
   }
 
   // Draw all balls

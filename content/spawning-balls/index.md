@@ -15,6 +15,10 @@ controls: |
   <label for="limit-slider">Max Balls: <span id="limit-value">50</span></label>
   <input type="range" id="limit-slider" class="control-slider" min="10" max="200" value="50">
   <span id="ball-count">Balls: 2</span>
+  <br>
+  <label><input type="checkbox" id="trails-checkbox"> Trails</label>
+  <label for="trail-slider">Trail Length: <span id="trail-value">20</span></label>
+  <input type="range" id="trail-slider" class="control-slider" min="5" max="50" value="20">
 technical_details: |
   <ul>
     <li><strong>Physics:</strong> Balls bounce off the circular boundary using reflection based on the normal vector from the center. Ball-to-ball collisions use elastic collision physics.</li>
