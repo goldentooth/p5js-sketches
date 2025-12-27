@@ -233,6 +233,11 @@ function setup() {
     limitSlider.addEventListener('input', () => {
       maxBalls = parseInt(limitSlider.value);
       limitValue.textContent = maxBalls;
+      // Remove excess balls (keep the oldest ones)
+      if (balls.length > maxBalls) {
+        balls.length = maxBalls;
+        updateCountDisplay();
+      }
     });
   }
 
@@ -258,6 +263,23 @@ function setup() {
   }
 
   createInitialBalls();
+}
+
+function mousePressed() {
+  // Check if click is inside the canvas
+  if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) return;
+
+  // Check if click is inside the boundary circle
+  const distFromCenter = dist(mouseX, mouseY, centerX, centerY);
+  if (distFromCenter > BOUNDARY_RADIUS - ballRadius) return;
+
+  // Zap a random ball if at limit
+  if (balls.length >= maxBalls) {
+    const idx = floor(random(balls.length));
+    balls.splice(idx, 1);
+  }
+
+  spawnBall(mouseX, mouseY);
 }
 
 function draw() {
