@@ -5,10 +5,13 @@ describe('Component Registry', () => {
   describe('Components constant', () => {
     it('should export all component keys', () => {
       expect(Components.Action).toBe('Action');
+      expect(Components.AIControlled).toBe('AIControlled');
       expect(Components.BlocksMovement).toBe('BlocksMovement');
+      expect(Components.CombatStats).toBe('CombatStats');
       expect(Components.Energy).toBe('Energy');
       expect(Components.Glyph).toBe('Glyph');
       expect(Components.Memory).toBe('Memory');
+      expect(Components.Name).toBe('Name');
       expect(Components.PlayerControlled).toBe('PlayerControlled');
       expect(Components.Position).toBe('Position');
       expect(Components.Speed).toBe('Speed');
@@ -18,15 +21,18 @@ describe('Component Registry', () => {
     it('should provide all expected component keys', () => {
       const keys = Object.keys(Components);
       expect(keys).toContain('Action');
+      expect(keys).toContain('AIControlled');
       expect(keys).toContain('BlocksMovement');
+      expect(keys).toContain('CombatStats');
       expect(keys).toContain('Energy');
       expect(keys).toContain('Glyph');
       expect(keys).toContain('Memory');
+      expect(keys).toContain('Name');
       expect(keys).toContain('PlayerControlled');
       expect(keys).toContain('Position');
       expect(keys).toContain('Speed');
       expect(keys).toContain('Viewshed');
-      expect(keys.length).toBe(9);
+      expect(keys.length).toBe(12);
     });
   });
 

@@ -103,6 +103,17 @@ canvas {
   min-width: 160px;
 }
 
+.below-canvas {
+  display: flex;
+  justify-content: center;
+  padding: 0 1rem;
+}
+
+.below-canvas > * {
+  max-width: 640px;
+  width: 100%;
+}
+
 .sketch-footer {
   max-width: 800px;
   margin: 0 auto;

@@ -8,6 +8,7 @@ export * from './input';
 export * from './map';
 export * from './movement';
 export * from './p5';
+export * from './pathfinding';
 export * from './render';
 export * from './rng';
 export * from './time';

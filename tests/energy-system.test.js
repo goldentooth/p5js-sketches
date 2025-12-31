@@ -429,4 +429,155 @@ describe('Energy System', () => {
       expect(action).toBeUndefined(); // Action executed and removed
     });
   });
+
+  describe('Melee Combat', () => {
+    it('should deal damage when attacking', () => {
+      const attacker = world.createEntity();
+      world.addComponent(attacker, Components.Position, { x: 10, y: 10 });
+      world.addComponent(attacker, Components.Energy, {
+        current: 100,
+        max: 100,
+        regenRate: 10,
+      });
+      world.addComponent(attacker, Components.CombatStats, {
+        hp: 10,
+        maxHp: 10,
+        attack: 5,
+        defense: 0,
+      });
+
+      const target = world.createEntity();
+      world.addComponent(target, Components.Position, { x: 11, y: 10 });
+      world.addComponent(target, Components.CombatStats, {
+        hp: 10,
+        maxHp: 10,
+        attack: 2,
+        defense: 1,
+      });
+
+      // Queue attack action
+      world.addComponent(attacker, Components.Action, {
+        type: 'melee_attack',
+        target: target,
+        energyCost: 100,
+      });
+
+      world.tick(0);
+
+      // Target should have taken 4 damage (5 attack - 1 defense)
+      const targetStats = world.getComponent(target, Components.CombatStats);
+      expect(targetStats.hp).toBe(6);
+    });
+
+    it('should not deal negative damage', () => {
+      const attacker = world.createEntity();
+      world.addComponent(attacker, Components.Position, { x: 10, y: 10 });
+      world.addComponent(attacker, Components.Energy, {
+        current: 100,
+        max: 100,
+        regenRate: 10,
+      });
+      world.addComponent(attacker, Components.CombatStats, {
+        hp: 10,
+        maxHp: 10,
+        attack: 1, // Low attack
+        defense: 0,
+      });
+
+      const target = world.createEntity();
+      world.addComponent(target, Components.Position, { x: 11, y: 10 });
+      world.addComponent(target, Components.CombatStats, {
+        hp: 10,
+        maxHp: 10,
+        attack: 2,
+        defense: 5, // High defense
+      });
+
+      world.addComponent(attacker, Components.Action, {
+        type: 'melee_attack',
+        target: target,
+        energyCost: 100,
+      });
+
+      world.tick(0);
+
+      // Target should take 0 damage (attack < defense)
+      const targetStats = world.getComponent(target, Components.CombatStats);
+      expect(targetStats.hp).toBe(10);
+    });
+
+    it('should destroy entity when HP reaches 0', () => {
+      const attacker = world.createEntity();
+      world.addComponent(attacker, Components.Position, { x: 10, y: 10 });
+      world.addComponent(attacker, Components.Energy, {
+        current: 100,
+        max: 100,
+        regenRate: 10,
+      });
+      world.addComponent(attacker, Components.CombatStats, {
+        hp: 10,
+        maxHp: 10,
+        attack: 10,
+        defense: 0,
+      });
+
+      const target = world.createEntity();
+      world.addComponent(target, Components.Position, { x: 11, y: 10 });
+      world.addComponent(target, Components.CombatStats, {
+        hp: 5,
+        maxHp: 5,
+        attack: 2,
+        defense: 0,
+      });
+
+      world.addComponent(attacker, Components.Action, {
+        type: 'melee_attack',
+        target: target,
+        energyCost: 100,
+      });
+
+      world.tick(0);
+
+      // Target should be destroyed (took 10 damage with only 5 HP)
+      const targetStats = world.getComponent(target, Components.CombatStats);
+      expect(targetStats).toBeUndefined();
+
+      // Target should not exist in position query
+      const entities = Array.from(world.query([Components.Position]));
+      expect(entities).not.toContain(target);
+    });
+
+    it('should not crash if target has no CombatStats', () => {
+      const attacker = world.createEntity();
+      world.addComponent(attacker, Components.Position, { x: 10, y: 10 });
+      world.addComponent(attacker, Components.Energy, {
+        current: 100,
+        max: 100,
+        regenRate: 10,
+      });
+      world.addComponent(attacker, Components.CombatStats, {
+        hp: 10,
+        maxHp: 10,
+        attack: 5,
+        defense: 0,
+      });
+
+      const target = world.createEntity();
+      world.addComponent(target, Components.Position, { x: 11, y: 10 });
+      // No CombatStats
+
+      world.addComponent(attacker, Components.Action, {
+        type: 'melee_attack',
+        target: target,
+        energyCost: 100,
+      });
+
+      // Should not throw
+      expect(() => world.tick(0)).not.toThrow();
+
+      // Target should still exist
+      const targetPos = world.getComponent(target, Components.Position);
+      expect(targetPos).toBeDefined();
+    });
+  });
 });

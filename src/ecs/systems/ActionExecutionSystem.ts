@@ -1,6 +1,8 @@
-import type { System, World, Phase } from '../types';
+import type { System, World, Phase, Entity } from '../types';
 import type { Action } from '../components/Action';
 import type { Energy } from '../components/Energy';
+import type { CombatStats } from '../components/CombatStats';
+import type { Position } from '../components/Position';
 import { Components } from '../components';
 import type { MovementSystem } from './MovementSystem';
 
@@ -59,7 +61,9 @@ export class ActionExecutionSystem implements System {
         break;
 
       case 'melee_attack':
-        // TODO: Implement in Stage 8 (Combat)
+        if (action.target !== undefined) {
+          this.executeMeleeAttack(world, entity, action.target);
+        }
         break;
 
       case 'ranged_attack':
@@ -80,6 +84,40 @@ export class ActionExecutionSystem implements System {
 
       default:
         console.warn(`Unknown action type: ${(action as Action).type}`);
+    }
+  }
+
+  /**
+   * Execute a melee attack against a target entity
+   *
+   * Damage is calculated as: attacker.attack - defender.defense (minimum 0)
+   * If target's HP drops to 0 or below, the entity is destroyed.
+   * Attack only succeeds if attacker and target are adjacent.
+   */
+  private executeMeleeAttack(world: World, attacker: Entity, target: Entity): void {
+    const attackerStats = world.getComponent<CombatStats>(attacker, Components.CombatStats);
+    const targetStats = world.getComponent<CombatStats>(target, Components.CombatStats);
+    const attackerPos = world.getComponent<Position>(attacker, Components.Position);
+    const targetPos = world.getComponent<Position>(target, Components.Position);
+
+    // Both entities need CombatStats and Position for combat
+    if (!attackerStats || !targetStats || !attackerPos || !targetPos) return;
+
+    // Verify attacker and target are still adjacent (target may have moved)
+    const dx = Math.abs(attackerPos.x - targetPos.x);
+    const dy = Math.abs(attackerPos.y - targetPos.y);
+    const isAdjacent = dx <= 1 && dy <= 1 && !(dx === 0 && dy === 0);
+    if (!isAdjacent) return; // Attack whiffs - target moved away
+
+    // Calculate damage (minimum 0)
+    const damage = Math.max(0, attackerStats.attack - targetStats.defense);
+
+    // Apply damage
+    targetStats.hp -= damage;
+
+    // Check for death
+    if (targetStats.hp <= 0) {
+      world.destroyEntity(target);
     }
   }
 }

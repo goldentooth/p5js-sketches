@@ -1,8 +1,11 @@
 export * from './Action';
+export * from './AIControlled';
 export * from './BlocksMovement';
+export * from './CombatStats';
 export * from './Energy';
 export * from './Glyph';
 export * from './Memory';
+export * from './Name';
 export * from './PlayerControlled';
 export * from './Position';
 export * from './Speed';
@@ -21,10 +24,13 @@ export * from './Viewshed';
  */
 export const Components = {
   Action: 'Action',
+  AIControlled: 'AIControlled',
   BlocksMovement: 'BlocksMovement',
+  CombatStats: 'CombatStats',
   Energy: 'Energy',
   Glyph: 'Glyph',
   Memory: 'Memory',
+  Name: 'Name',
   PlayerControlled: 'PlayerControlled',
   Position: 'Position',
   Speed: 'Speed',

@@ -60,6 +60,12 @@
   {{ end }}
 </main>
 
+{{ with .Params.below_canvas }}
+<div class="below-canvas">
+  {{ . | safeHTML }}
+</div>
+{{ end }}
+
 {{ with .Params.extra_controls }}
 {{ . | safeHTML }}
 {{ end }}

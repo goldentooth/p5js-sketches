@@ -7,6 +7,8 @@ export interface GameClock {
   tick: number;
   /** Whether the game clock is paused */
   paused: boolean;
+  /** Whether the player is recharging energy (blocks AI but allows regen) */
+  playerRecharging: boolean;
 }
 
 /**
@@ -16,5 +18,6 @@ export function createGameClock(): GameClock {
   return {
     tick: 0,
     paused: false,
+    playerRecharging: false,
   };
 }
