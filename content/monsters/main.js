@@ -405,19 +405,24 @@ function handlePlayerInput(direction) {
     }
   }
 
+  // Get player's energy costs
+  const playerEnergy = world.getComponent(playerEntity, 'Energy');
+  const moveCost = playerEnergy?.moveCost ?? 100;
+  const attackCost = playerEnergy?.attackCost ?? 100;
+
   if (targetEntity !== null) {
     // Queue attack action - messages shown after tick based on actual results
     world.addComponent(playerEntity, 'Action', {
       type: 'melee_attack',
       target: targetEntity,
-      energyCost: 100
+      energyCost: attackCost
     });
   } else {
     // Queue move action
     world.addComponent(playerEntity, 'Action', {
       type: 'move',
       direction: direction,
-      energyCost: 100
+      energyCost: moveCost
     });
   }
 }

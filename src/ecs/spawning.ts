@@ -28,10 +28,14 @@ export interface MonsterTemplate {
   attack: number;
   /** Defense rating */
   defense: number;
-  /** Speed multiplier (default: 1.0) */
+  /** Speed multiplier (default: 1.0) - affects energy regen rate */
   speed?: number;
   /** FOV range (default: 8) */
   fovRange?: number;
+  /** Energy cost to move (default: 100) */
+  moveCost?: number;
+  /** Energy cost to attack (default: 100) */
+  attackCost?: number;
 }
 
 /**
@@ -47,6 +51,8 @@ export const MonsterTemplates: Record<string, MonsterTemplate> = {
     defense: 0,
     speed: 1.0,
     fovRange: 8,
+    moveCost: 80,   // Quick and nimble
+    attackCost: 80,
   },
   orc: {
     name: 'Orc',
@@ -57,6 +63,8 @@ export const MonsterTemplates: Record<string, MonsterTemplate> = {
     defense: 1,
     speed: 0.8,
     fovRange: 6,
+    moveCost: 100,
+    attackCost: 100,
   },
   troll: {
     name: 'Troll',
@@ -67,6 +75,8 @@ export const MonsterTemplates: Record<string, MonsterTemplate> = {
     defense: 2,
     speed: 0.5,
     fovRange: 4,
+    moveCost: 120,  // Slow and lumbering
+    attackCost: 150, // Big wind-up on attacks
   },
   rat: {
     name: 'Giant Rat',
@@ -77,6 +87,8 @@ export const MonsterTemplates: Record<string, MonsterTemplate> = {
     defense: 0,
     speed: 1.5,
     fovRange: 6,
+    moveCost: 60,   // Very quick
+    attackCost: 60,
   },
   skeleton: {
     name: 'Skeleton',
@@ -87,6 +99,8 @@ export const MonsterTemplates: Record<string, MonsterTemplate> = {
     defense: 1,
     speed: 0.9,
     fovRange: 8,
+    moveCost: 100,
+    attackCost: 90,
   },
 };
 
@@ -167,10 +181,16 @@ export function spawnMonster(
     defense: template.defense,
   });
 
+  const moveCost = template.moveCost ?? actionEnergyCost;
+  const attackCost = template.attackCost ?? actionEnergyCost;
+  const maxEnergy = Math.max(actionEnergyCost, moveCost, attackCost);
+
   world.addComponent(entity, Components.Energy, {
     current: 0,
-    max: actionEnergyCost,
+    max: maxEnergy,
     regenRate: Math.floor(actionEnergyCost / 10),
+    moveCost,
+    attackCost,
   });
 
   if (template.speed && template.speed !== 1.0) {
@@ -317,6 +337,10 @@ export interface CreatePlayerOptions {
   fovAlgorithm?: string;
   /** Action energy cost (default: 100) */
   actionEnergyCost?: number;
+  /** Energy cost to move (default: 100) */
+  moveCost?: number;
+  /** Energy cost to attack (default: 100) */
+  attackCost?: number;
 }
 
 export function createPlayer(
@@ -334,6 +358,8 @@ export function createPlayer(
     fovRange = 10,
     fovAlgorithm = 'shadowcasting',
     actionEnergyCost = 100,
+    moveCost = 100,
+    attackCost = 100,
   } = options;
 
   const entity = world.createEntity();
@@ -361,6 +387,8 @@ export function createPlayer(
     current: actionEnergyCost,
     max: actionEnergyCost,
     regenRate: Math.floor(actionEnergyCost / 10),
+    moveCost,
+    attackCost,
   });
 
   world.addComponent(entity, Components.Viewshed, {

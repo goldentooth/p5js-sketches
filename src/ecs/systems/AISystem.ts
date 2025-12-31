@@ -3,6 +3,7 @@ import type { GameClock } from '../resources/GameClock.js';
 import type { Map as GameMap } from '../../map/types.js';
 import type { Position } from '../components/Position.js';
 import type { CombatStats } from '../components/CombatStats.js';
+import type { Energy } from '../components/Energy.js';
 import type { xoroshiro128plus } from '../../rng.js';
 import { Components } from '../components/index.js';
 import { getStepToward, isAdjacent } from '../../pathfinding/astar.js';
@@ -164,6 +165,22 @@ export class AISystem implements System {
   }
 
   /**
+   * Get the move cost for an entity (from Energy component or default)
+   */
+  private getMoveCost(world: World, entity: Entity): number {
+    const energy = world.getComponent<Energy>(entity, Components.Energy);
+    return energy?.moveCost ?? this.defaultActionCost;
+  }
+
+  /**
+   * Get the attack cost for an entity (from Energy component or default)
+   */
+  private getAttackCost(world: World, entity: Entity): number {
+    const energy = world.getComponent<Energy>(entity, Components.Energy);
+    return energy?.attackCost ?? this.defaultActionCost;
+  }
+
+  /**
    * Queue a movement action
    */
   private queueMoveAction(
@@ -174,7 +191,7 @@ export class AISystem implements System {
     world.addComponent(entity, Components.Action, {
       type: 'move',
       direction,
-      energyCost: this.defaultActionCost,
+      energyCost: this.getMoveCost(world, entity),
     });
   }
 
@@ -185,7 +202,7 @@ export class AISystem implements System {
     world.addComponent(entity, Components.Action, {
       type: 'melee_attack',
       target,
-      energyCost: this.defaultActionCost,
+      energyCost: this.getAttackCost(world, entity),
     });
   }
 
@@ -197,7 +214,7 @@ export class AISystem implements System {
     world.addComponent(entity, Components.Action, {
       type: 'move',
       direction,
-      energyCost: this.defaultActionCost,
+      energyCost: this.getMoveCost(world, entity),
     });
   }
 }

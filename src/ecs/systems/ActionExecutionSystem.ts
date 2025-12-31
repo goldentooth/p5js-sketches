@@ -18,13 +18,28 @@ export class ActionExecutionSystem implements System {
   /**
    * Process all entities with queued actions.
    * Actions are only executed if the entity has enough energy.
+   * Player actions are processed first to ensure player moves resolve before enemy attacks.
    */
   run(world: World): void {
     // Register components before querying
     world.registerComponent(Components.Action);
     world.registerComponent(Components.Energy);
+    world.registerComponent(Components.PlayerControlled);
+
+    // Collect entities with actions, separating player from others
+    const playerEntities: Entity[] = [];
+    const otherEntities: Entity[] = [];
 
     for (const entity of world.query([Components.Action, Components.Energy])) {
+      if (world.getComponent(entity, Components.PlayerControlled)) {
+        playerEntities.push(entity);
+      } else {
+        otherEntities.push(entity);
+      }
+    }
+
+    // Process player actions first, then others
+    for (const entity of [...playerEntities, ...otherEntities]) {
       const action = world.getComponent<Action>(entity, Components.Action);
       const energy = world.getComponent<Energy>(entity, Components.Energy);
 
@@ -107,13 +122,23 @@ export class ActionExecutionSystem implements System {
     const dx = Math.abs(attackerPos.x - targetPos.x);
     const dy = Math.abs(attackerPos.y - targetPos.y);
     const isAdjacent = dx <= 1 && dy <= 1 && !(dx === 0 && dy === 0);
-    if (!isAdjacent) return; // Attack whiffs - target moved away
 
-    // Calculate damage (minimum 0)
+    if (!isAdjacent) {
+      return; // Attack whiffs - target moved away
+    }
+
+    // Calculate and apply damage (minimum 0)
     const damage = Math.max(0, attackerStats.attack - targetStats.defense);
-
-    // Apply damage
     targetStats.hp -= damage;
+
+    // Stagger: target loses energy proportional to damage (makes kiting possible)
+    if (damage > 0) {
+      const targetEnergy = world.getComponent<Energy>(target, Components.Energy);
+      if (targetEnergy) {
+        const staggerAmount = damage * 10; // Each point of damage = 10 energy lost
+        targetEnergy.current = Math.max(0, targetEnergy.current - staggerAmount);
+      }
+    }
 
     // Check for death
     if (targetStats.hp <= 0) {
