@@ -1,0 +1,220 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { createMap, findPath, getStepToward, distance, isAdjacent, Tiles } from '../src';
+
+describe('Pathfinding', () => {
+  describe('findPath', () => {
+    let map;
+
+    beforeEach(() => {
+      // Create a 10x10 map with floor tiles
+      map = createMap(10, 10, { edgeBehavior: 'block' });
+
+      // Fill with floor
+      for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+          map.setTile(x, y, Tiles.Floor);
+        }
+      }
+    });
+
+    it('should find a straight path on open map', () => {
+      const result = findPath(map, 0, 0, 5, 0);
+
+      expect(result.found).toBe(true);
+      expect(result.path.length).toBe(5);
+      expect(result.path[0]).toEqual({ x: 1, y: 0 });
+      expect(result.path[4]).toEqual({ x: 5, y: 0 });
+    });
+
+    it('should return empty path when start equals goal', () => {
+      const result = findPath(map, 3, 3, 3, 3);
+
+      expect(result.found).toBe(true);
+      expect(result.path.length).toBe(0);
+    });
+
+    it('should find path around obstacles', () => {
+      // Create a wall barrier
+      map.setTile(2, 0, Tiles.Wall);
+      map.setTile(2, 1, Tiles.Wall);
+      map.setTile(2, 2, Tiles.Wall);
+
+      const result = findPath(map, 0, 0, 4, 0);
+
+      expect(result.found).toBe(true);
+      // Path should go around the wall
+      expect(result.path.length).toBeGreaterThan(4);
+    });
+
+    it('should return no path when completely blocked', () => {
+      // Create a complete wall barrier
+      for (let y = 0; y < 10; y++) {
+        map.setTile(5, y, Tiles.Wall);
+      }
+
+      const result = findPath(map, 0, 0, 9, 0);
+
+      expect(result.found).toBe(false);
+      expect(result.path.length).toBe(0);
+    });
+
+    it('should return no path when start is blocked', () => {
+      map.setTile(0, 0, Tiles.Wall);
+
+      const result = findPath(map, 0, 0, 5, 5);
+
+      expect(result.found).toBe(false);
+    });
+
+    it('should return no path when goal is blocked', () => {
+      map.setTile(5, 5, Tiles.Wall);
+
+      const result = findPath(map, 0, 0, 5, 5);
+
+      expect(result.found).toBe(false);
+    });
+
+    it('should respect maxNodes limit', () => {
+      const result = findPath(map, 0, 0, 9, 9, { maxNodes: 5 });
+
+      // With only 5 nodes, unlikely to find path across large map
+      expect(result.nodesExplored).toBeLessThanOrEqual(5);
+    });
+
+    it('should use custom blocking function', () => {
+      const blockedPositions = new Set(['3,3', '3,4', '3,5']);
+
+      const result = findPath(map, 0, 3, 6, 3, {
+        isBlocked: (x, y) => blockedPositions.has(`${x},${y}`),
+      });
+
+      expect(result.found).toBe(true);
+      // Should not pass through blocked positions
+      for (const node of result.path) {
+        expect(blockedPositions.has(`${node.x},${node.y}`)).toBe(false);
+      }
+    });
+
+    it('should allow reaching goal even if blocked by entity', () => {
+      // Goal is "blocked" by an entity we want to attack
+      const result = findPath(map, 0, 0, 3, 0, {
+        isBlocked: (x, y) => x === 3 && y === 0,
+      });
+
+      expect(result.found).toBe(true);
+      // Last step should be the goal
+      expect(result.path[result.path.length - 1]).toEqual({ x: 3, y: 0 });
+    });
+
+    describe('diagonal movement', () => {
+      it('should find diagonal path when allowed', () => {
+        const result = findPath(map, 0, 0, 3, 3, { allowDiagonal: true });
+
+        expect(result.found).toBe(true);
+        // Diagonal path should be shorter
+        expect(result.path.length).toBe(3);
+      });
+
+      it('should find longer cardinal path when diagonal disabled', () => {
+        const result = findPath(map, 0, 0, 3, 3, { allowDiagonal: false });
+
+        expect(result.found).toBe(true);
+        // Cardinal path is longer (Manhattan distance)
+        expect(result.path.length).toBe(6);
+      });
+    });
+  });
+
+  describe('getStepToward', () => {
+    let map;
+
+    beforeEach(() => {
+      map = createMap(10, 10, { edgeBehavior: 'block' });
+      for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+          map.setTile(x, y, Tiles.Floor);
+        }
+      }
+    });
+
+    it('should return first step direction', () => {
+      const dir = getStepToward(map, 0, 0, 3, 0);
+
+      expect(dir).toBeDefined();
+      expect(dir.dx).toBe(1);
+      expect(dir.dy).toBe(0);
+    });
+
+    it('should return null when no path exists', () => {
+      // Block path completely
+      for (let y = 0; y < 10; y++) {
+        map.setTile(5, y, Tiles.Wall);
+      }
+
+      const dir = getStepToward(map, 0, 0, 9, 0);
+
+      expect(dir).toBeNull();
+    });
+
+    it('should return null when already at goal', () => {
+      const dir = getStepToward(map, 5, 5, 5, 5);
+
+      // At goal, no step needed - path is empty
+      expect(dir).toBeNull();
+    });
+
+    it('should navigate around obstacles', () => {
+      // Create L-shaped wall
+      map.setTile(1, 0, Tiles.Wall);
+      map.setTile(1, 1, Tiles.Wall);
+
+      const dir = getStepToward(map, 0, 0, 2, 0);
+
+      // Should go south first to go around wall
+      expect(dir).toBeDefined();
+      expect(dir.dy).toBe(1);
+    });
+  });
+
+  describe('distance', () => {
+    it('should return 0 for same position', () => {
+      expect(distance(5, 5, 5, 5)).toBe(0);
+    });
+
+    it('should return 1 for adjacent positions', () => {
+      expect(distance(5, 5, 5, 6)).toBe(1);
+      expect(distance(5, 5, 6, 5)).toBe(1);
+      expect(distance(5, 5, 6, 6)).toBe(1); // diagonal
+    });
+
+    it('should use Chebyshev distance (max of dx, dy)', () => {
+      expect(distance(0, 0, 3, 5)).toBe(5);
+      expect(distance(0, 0, 7, 2)).toBe(7);
+    });
+  });
+
+  describe('isAdjacent', () => {
+    it('should return true for cardinal adjacent', () => {
+      expect(isAdjacent(5, 5, 5, 6)).toBe(true);
+      expect(isAdjacent(5, 5, 5, 4)).toBe(true);
+      expect(isAdjacent(5, 5, 6, 5)).toBe(true);
+      expect(isAdjacent(5, 5, 4, 5)).toBe(true);
+    });
+
+    it('should return true for diagonal adjacent', () => {
+      expect(isAdjacent(5, 5, 6, 6)).toBe(true);
+      expect(isAdjacent(5, 5, 4, 4)).toBe(true);
+      expect(isAdjacent(5, 5, 6, 4)).toBe(true);
+      expect(isAdjacent(5, 5, 4, 6)).toBe(true);
+    });
+
+    it('should return false for same position', () => {
+      expect(isAdjacent(5, 5, 5, 5)).toBe(false);
+    });
+
+    it('should return false for distant positions', () => {
+      expect(isAdjacent(0, 0, 2, 0)).toBe(false);
+      expect(isAdjacent(0, 0, 5, 5)).toBe(false);
+    });
+  });
+});
