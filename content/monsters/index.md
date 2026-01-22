@@ -15,7 +15,7 @@ technical_details: |
     <li><strong>Monster Types:</strong> Goblins, Orcs, and Trolls with different stats</li>
   </ul>
 below_canvas: |
-  <div id="game-message" style="padding: 8px; background: #1a1a1a; border-radius: 4px; font-size: 0.9em; min-height: 80px; font-family: monospace; line-height: 1.4;"></div>
+  <div id="game-message" style="padding: 8px; background: #1a1a1a; color: #ccc; border-radius: 4px; font-size: 0.9em; min-height: 80px; font-family: monospace; line-height: 1.4;"></div>
 controls: |
   <div style="display: flex; flex-direction: column; gap: 12px;">
     <div>

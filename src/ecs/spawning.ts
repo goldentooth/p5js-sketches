@@ -188,7 +188,7 @@ export function spawnMonster(
   world.addComponent(entity, Components.Energy, {
     current: 0,
     max: maxEnergy,
-    regenRate: Math.floor(actionEnergyCost / 10),
+    regenRate: Math.floor(actionEnergyCost / 2),
     moveCost,
     attackCost,
   });
@@ -386,7 +386,7 @@ export function createPlayer(
   world.addComponent(entity, Components.Energy, {
     current: actionEnergyCost,
     max: actionEnergyCost,
-    regenRate: Math.floor(actionEnergyCost / 10),
+    regenRate: Math.floor(actionEnergyCost / 2),
     moveCost,
     attackCost,
   });
