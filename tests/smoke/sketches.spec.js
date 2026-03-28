@@ -37,13 +37,7 @@ for (const sketch of sketches) {
       errors.push(`pageerror: ${err.message}`);
     });
 
-    const response = await page.goto(`${sketch}/`);
-
-    // Skip if not served
-    if (!response || response.status() !== 200) {
-      test.skip();
-      return;
-    }
+    await page.goto(`${sketch}/`);
 
     // Wait for p5.js to create the canvas
     await page.waitForSelector("canvas", { timeout: 10000 });
