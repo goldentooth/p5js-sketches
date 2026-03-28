@@ -56,7 +56,7 @@ function renderMap(world, map, agentEntity, tick) {
       if (!visible && !explored) continue;
 
       var light = visible ? getLightAt(x, y) : 0;
-      var dimFactor = visible ? Math.max(0.05, light) : 0.15;
+      var dimFactor = visible ? Math.max(0.2, light) : 0.15;
 
       var feat = getFeatureAt(x, y);
       var terr = getTerrainAt(x, y);
@@ -72,7 +72,7 @@ function renderMap(world, map, agentEntity, tick) {
 
       if (!ch) {
         ch = map.blocksMovement(x, y) ? "#" : "\u00B7";
-        col = map.blocksMovement(x, y) ? [128, 128, 128] : [34, 80, 34];
+        col = map.blocksMovement(x, y) ? [180, 180, 180] : [70, 160, 70];
       }
 
       // Multiply color by light level

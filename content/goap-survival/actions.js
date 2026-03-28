@@ -185,7 +185,6 @@ function findNearestFeature(map, ax, ay, featureType, wantClear, maxRadius) {
   for (var y = 0; y < MAP_ROWS; y++) {
     for (var x = 0; x < MAP_COLS; x++) {
       if (wantClear) {
-        // For "clear" target: walkable grass tile with no feature, not the agent's tile
         if (map.blocksMovement(x, y)) continue;
         if (getFeatureAt(x, y) !== FEATURE_NONE) continue;
         if (getTerrainAt(x, y) !== TERRAIN_GRASS) continue;

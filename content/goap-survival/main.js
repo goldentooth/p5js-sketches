@@ -217,6 +217,11 @@ var PlanExecutionSystem = class {
     }
   }
 
+  triggerReplan(world, entity) {
+    var agent = world.getComponent(entity, "GoapAgent");
+    if (agent) agent.needsReplan = true;
+  }
+
   executeMoveToAction(world, entity, name, pos, gameMap) {
     var targetType = name.replace("move_to_", "");
     var featureType = FEATURE_NONE;
@@ -268,7 +273,7 @@ var PlanExecutionSystem = class {
 
     // Pathfind one step toward goal (walkable neighbor if target is blocked)
     var goal = this.pathGoal || this.moveTarget;
-    var dir = Nuglib.getStepToward(gameMap, pos.x, pos.y, goal.x, goal.y);
+    var dir = Nuglib.getStepToward(gameMap, pos.x, pos.y, goal.x, goal.y, { allowDiagonal: true });
     if (dir) {
       this.queueMove(world, entity, dir);
     } else {
@@ -781,6 +786,19 @@ function regenerateWorld() {
 
   // Create ECS world
   world = Nuglib.createWorld();
+
+  // Pre-register components used in queries before any entity exists
+  // (query() throws if a component name hasn't been seen yet)
+  var preRegister = [
+    "AIControlled", "Action", "Dead", "Name",
+    "Position", "Glyph", "BlocksMovement", "Energy",
+    "CombatStats", "Viewshed", "Memory",
+    "Needs", "Inventory", "GoapAgent",
+  ];
+  for (var i = 0; i < preRegister.length; i++) {
+    world.registerComponent(preRegister[i]);
+  }
+
   world.addResource("GameClock", Nuglib.createGameClock());
   world.addResource("map", map);
   world.addResource("SurvivalStats", {
