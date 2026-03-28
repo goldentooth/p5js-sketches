@@ -22,6 +22,8 @@ var GOAL_COLORS = {
   "craft axe": [100, 200, 100],   // green
   "craft torch": [100, 200, 100], // green
   "gather wood": [100, 200, 100], // green
+  shelter: [180, 140, 100],           // tan
+  "craft fishing pole": [100, 200, 100], // green
   none: [255, 255, 255],    // white
 };
 
@@ -194,7 +196,12 @@ function renderPanel(world, agentEntity, tick) {
     text("Axe: " + (inventory.hasAxe ? "YES" : "no") +
          "  Torch: " + (inventory.hasTorch ? "YES" : "no"), px, py);
     py += lineH;
-    text("Food: " + (inventory.hasFood ? "YES" : "no"), px, py);
+    text("Pole: " + (inventory.hasFishingPole ? "YES" : "no") +
+         "  Food: " + (inventory.hasFood ? "YES" : "no"), px, py);
+    py += lineH;
+    var fishStatus = inventory.hasCookedFish ? "cooked" :
+                     inventory.hasRawFish ? "raw" : "no";
+    text("Fish: " + fishStatus, px, py);
     py += lineH + 8;
   }
 

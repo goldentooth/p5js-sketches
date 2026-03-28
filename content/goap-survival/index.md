@@ -62,7 +62,8 @@ controls: |
         <span style="color: #8B4513;">/</span> Sticks &nbsp;
         <span style="color: #808080;">^</span> Rock &nbsp;
         <span style="color: #800080;">b</span> Berries &nbsp;
-        <span style="color: #FFA500;">*</span> Fire<br>
+        <span style="color: #FFA500;">*</span> Fire &nbsp;
+        <span style="color: #B48C64;">H</span> Shelter<br>
         <span style="color: #556B2F;">&clubs;</span> Dense forest &nbsp;
         <span style="color: #4169E1;">~</span> Water &nbsp;
         <span style="color: #2E8B57;">Z</span> Zombie &nbsp;
