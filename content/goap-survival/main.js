@@ -180,6 +180,34 @@ var PlanExecutionSystem = class {
         needs.warmth = Math.min(100, needs.warmth + 20);
         return true;
 
+      case "craft_fishing_pole":
+        if (inventory.sticks >= 2 && inventory.stones >= 1) {
+          inventory.sticks -= 2;
+          inventory.stones--;
+          inventory.hasFishingPole = true;
+        }
+        return true;
+
+      case "catch_fish":
+        return this.executeCatchFish(world, entity, pos, inventory);
+
+      case "cook_fish":
+        return this.executeCookFish(world, entity, pos, inventory);
+
+      case "eat_raw_fish":
+        if (inventory.hasRawFish) {
+          inventory.hasRawFish = false;
+          needs.hunger = Math.min(100, needs.hunger + 15);
+        }
+        return true;
+
+      case "eat_cooked_fish":
+        if (inventory.hasCookedFish) {
+          inventory.hasCookedFish = false;
+          needs.hunger = Math.min(100, needs.hunger + 60);
+        }
+        return true;
+
       default:
         return true; // unknown action, skip
     }
@@ -372,6 +400,51 @@ var PlanExecutionSystem = class {
           energyCost: 150,
         });
         return true;
+      }
+    }
+    return true;
+  }
+
+  executeCatchFish(world, entity, pos, inventory) {
+    if (!inventory.hasFishingPole) return true;
+
+    // Check adjacent tiles for water terrain
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var nx = pos.x + dx;
+        var ny = pos.y + dy;
+        if (getTerrainAt(nx, ny) === TERRAIN_WATER) {
+          inventory.hasRawFish = true;
+          world.addComponent(entity, "Action", {
+            type: "wait",
+            energyCost: 100,
+          });
+          return true;
+        }
+      }
+    }
+    return true;
+  }
+
+  executeCookFish(world, entity, pos, inventory) {
+    if (!inventory.hasRawFish) return true;
+
+    // Check adjacent tiles for fire
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var nx = pos.x + dx;
+        var ny = pos.y + dy;
+        if (getFeatureAt(nx, ny) === FEATURE_FIRE) {
+          inventory.hasCookedFish = true;
+          inventory.hasRawFish = false;
+          world.addComponent(entity, "Action", {
+            type: "wait",
+            energyCost: 50,
+          });
+          return true;
+        }
       }
     }
     return true;
