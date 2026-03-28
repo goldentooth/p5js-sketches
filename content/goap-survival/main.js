@@ -213,6 +213,11 @@ var PlanExecutionSystem = class {
     }
   }
 
+  triggerReplan(world, entity) {
+    var agent = world.getComponent(entity, "GoapAgent");
+    if (agent) agent.needsReplan = true;
+  }
+
   executeMoveToAction(world, entity, name, pos, gameMap) {
     var targetType = name.replace("move_to_", "");
     var featureType = FEATURE_NONE;
@@ -236,13 +241,13 @@ var PlanExecutionSystem = class {
       } else {
         nearest = findNearestFeaturePosition(gameMap, pos.x, pos.y, featureType, wantClear);
       }
-      if (!nearest) return true; // can't find target, skip
+      if (!nearest) { this.triggerReplan(world, entity); return true; }
       this.moveTarget = nearest;
 
       // If target tile is blocked (rocks, water), path to a walkable neighbor
       if (gameMap.blocksMovement(nearest.x, nearest.y)) {
         var neighbor = this.findWalkableNeighbor(gameMap, nearest.x, nearest.y);
-        if (!neighbor) return true;
+        if (!neighbor) { this.triggerReplan(world, entity); return true; }
         this.pathGoal = neighbor;
       } else {
         this.pathGoal = nearest;
@@ -265,7 +270,7 @@ var PlanExecutionSystem = class {
     if (dir) {
       this.queueMove(world, entity, dir);
     } else {
-      return true; // can't reach, give up
+      this.triggerReplan(world, entity); return true; // can't reach, replan
     }
 
     return false; // not done yet, still moving
@@ -317,7 +322,7 @@ var PlanExecutionSystem = class {
         var ny = pos.y + dy;
         if (getFeatureAt(nx, ny) === FEATURE_BERRY) {
           inventory.hasFood = true;
-          // Berries respawn, don't remove
+          removeFeatureAt(nx, ny);
           world.addComponent(entity, "Action", {
             type: "wait",
             energyCost: 50,
