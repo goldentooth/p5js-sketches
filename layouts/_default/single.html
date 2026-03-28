@@ -16,9 +16,14 @@
 {{ $libraries = union $libraries . }}
 {{ end }}
 
-<!-- Loop through libraries and include them. -->
+<!-- Loop through libraries. Use local page resource if available, otherwise global. -->
 {{ range $libraries }}
+{{ $local := $.Resources.GetMatch . }}
+{{ if $local }}
+<script src='{{ $local.RelPermalink }}'></script>
+{{ else }}
 <script src='{{ printf "libraries/%s" . | relURL }}'></script>
+{{ end }}
 {{ end }}
 {{ end }}
 
