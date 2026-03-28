@@ -124,7 +124,7 @@ var MOVE_TARGETS = [
   { target: "shelter", feature: FEATURE_SHELTER, stateKey: "near_shelter" },
 ];
 
-var MOVE_SEARCH_RADIUS = 15;
+var MOVE_SEARCH_RADIUS = 25;
 
 function buildMoveToActions(map, agentX, agentY) {
   var moveActions = [];

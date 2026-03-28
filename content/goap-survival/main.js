@@ -873,8 +873,8 @@ function regenerateWorld() {
     health: 100,
   });
   world.addComponent(agentEntity, "Inventory", {
-    sticks: 2,
-    stones: 1,
+    sticks: 4,
+    stones: 2,
     wood: 0,
     hasAxe: false,
     hasTorch: false,

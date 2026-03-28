@@ -218,6 +218,12 @@ var GoalSelectionSystem = class {
           priority: 20,
           label: "craft axe",
         });
+      } else if (inv3 && !inv3.hasFishingPole) {
+        candidates.push({
+          state: { has_fishing_pole: true },
+          priority: 20,
+          label: "craft fishing pole",
+        });
       } else {
         // Gather wood for future fires
         candidates.push({
