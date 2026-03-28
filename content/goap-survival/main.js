@@ -39,10 +39,12 @@ var GoapPlanningSystem = class {
       var pos = world.getComponent(entity, "Position");
       if (!agent || !pos) continue;
 
-      // Plan commitment: only replan when goal changes (needsReplan) or
-      // no plan exists. Do NOT revalidate per-tick — that causes oscillation
-      // when dynamic move_to costs shift with agent position.
-      if (!agent.currentPlan || agent.needsReplan) {
+      // Plan commitment: only replan when goal changes (needsReplan),
+      // no plan exists, or current plan is exhausted (goal not yet satisfied).
+      // Do NOT revalidate mid-plan — that causes oscillation.
+      var planExhausted = agent.currentPlan &&
+          agent.planStepIndex >= agent.currentPlan.actions.length;
+      if (!agent.currentPlan || agent.needsReplan || planExhausted) {
         this.makePlan(world, entity, agent, gameMap, tick);
       }
     }
