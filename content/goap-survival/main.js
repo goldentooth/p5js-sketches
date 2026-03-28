@@ -89,7 +89,8 @@ var GoapPlanningSystem = class {
 var PlanExecutionSystem = class {
   constructor() {
     this.phase = "early";
-    this.moveTarget = null; // { x, y } for current move_to destination
+    this.moveTarget = null; // { x, y } for feature location
+    this.pathGoal = null;   // { x, y } for walkable pathfinding destination
     this.lastPlan = null;   // track plan identity to clear stale moveTarget
     this.lastStepIndex = -1;
   }
@@ -112,6 +113,7 @@ var PlanExecutionSystem = class {
       // Clear stale moveTarget when plan or step changes (e.g. after replanning)
       if (agent.currentPlan !== this.lastPlan || agent.planStepIndex !== this.lastStepIndex) {
         this.moveTarget = null;
+        this.pathGoal = null;
         this.lastPlan = agent.currentPlan;
         this.lastStepIndex = agent.planStepIndex;
       }
@@ -132,6 +134,7 @@ var PlanExecutionSystem = class {
       if (done) {
         agent.planStepIndex++;
         this.moveTarget = null;
+        this.pathGoal = null;
         this.lastStepIndex = agent.planStepIndex;
       }
     }
@@ -215,9 +218,18 @@ var PlanExecutionSystem = class {
       var nearest = findNearestFeaturePosition(gameMap, pos.x, pos.y, featureType, wantClear);
       if (!nearest) return true; // can't find target, skip
       this.moveTarget = nearest;
+
+      // For blocked targets (rocks etc.), find a walkable neighbor to pathfind to
+      if (gameMap.blocksMovement(nearest.x, nearest.y)) {
+        var neighbor = this.findWalkableNeighbor(gameMap, nearest.x, nearest.y);
+        if (!neighbor) return true; // completely surrounded, skip
+        this.pathGoal = neighbor;
+      } else {
+        this.pathGoal = nearest;
+      }
     }
 
-    // Check if adjacent to the target (for rocks/features that block movement)
+    // Check if adjacent to the feature target
     if (Nuglib.isAdjacent(pos.x, pos.y, this.moveTarget.x, this.moveTarget.y)) {
       return true; // arrived adjacent
     }
@@ -227,13 +239,11 @@ var PlanExecutionSystem = class {
       return true; // arrived
     }
 
-    // Pathfind one step toward target (diagonal allowed for tight passages)
-    var dir = Nuglib.getStepToward(gameMap, pos.x, pos.y, this.moveTarget.x, this.moveTarget.y, { allowDiagonal: true });
+    // Pathfind one step toward pathGoal (which is always a walkable tile)
+    var dir = Nuglib.getStepToward(gameMap, pos.x, pos.y, this.pathGoal.x, this.pathGoal.y, { allowDiagonal: true });
     if (dir) {
       this.queueMove(world, entity, dir);
     } else {
-      console.warn("move_to: no path from", pos.x, pos.y, "to", this.moveTarget.x, this.moveTarget.y,
-        "blocked?", gameMap.blocksMovement(this.moveTarget.x, this.moveTarget.y));
       // Can't reach, give up on this action
       return true;
     }
@@ -370,6 +380,20 @@ var PlanExecutionSystem = class {
     }
 
     return true; // no threat or can't move
+  }
+
+  findWalkableNeighbor(gameMap, x, y) {
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var nx = x + dx;
+        var ny = y + dy;
+        if (nx >= 0 && nx < MAP_COLS && ny >= 0 && ny < MAP_ROWS && !gameMap.blocksMovement(nx, ny)) {
+          return { x: nx, y: ny };
+        }
+      }
+    }
+    return null;
   }
 
   queueMove(world, entity, direction) {
