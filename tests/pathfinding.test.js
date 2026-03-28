@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMap, findPath, getStepToward, distance, isAdjacent, Tiles } from '../src';
+import { createMap, findPath, findPathStepped, getStepToward, distance, isAdjacent, Tiles } from '../src';
 
 describe('Pathfinding', () => {
   describe('findPath', () => {
@@ -173,6 +173,102 @@ describe('Pathfinding', () => {
       // Should go south first to go around wall
       expect(dir).toBeDefined();
       expect(dir.dy).toBe(1);
+    });
+  });
+
+  describe('findPathStepped', () => {
+    let map;
+
+    beforeEach(() => {
+      map = createMap(10, 10, { edgeBehavior: 'block' });
+      for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+          map.setTile(x, y, Tiles.Floor);
+        }
+      }
+    });
+
+    it('should yield StepState on each expansion', () => {
+      const gen = findPathStepped(map, 0, 0, 3, 0);
+      const first = gen.next();
+
+      expect(first.done).toBe(false);
+      const state = first.value;
+      expect(state.current).toEqual({ x: 0, y: 0 });
+      expect(state.nodesExplored).toBe(1);
+      expect(state.closedSet.size).toBe(1);
+      expect(state.openSet.size).toBeGreaterThan(0);
+      expect(state.found).toBe(false);
+    });
+
+    it('should return PathResult when generator completes', () => {
+      const gen = findPathStepped(map, 0, 0, 3, 0);
+      let result;
+      while (true) {
+        const step = gen.next();
+        if (step.done) {
+          result = step.value;
+          break;
+        }
+      }
+
+      expect(result.found).toBe(true);
+      expect(result.path.length).toBe(3);
+      expect(result.path[0]).toEqual({ x: 1, y: 0 });
+      expect(result.path[2]).toEqual({ x: 3, y: 0 });
+    });
+
+    it('should produce same result as findPath', () => {
+      const directResult = findPath(map, 0, 0, 5, 5);
+
+      const gen = findPathStepped(map, 0, 0, 5, 5);
+      let steppedResult;
+      while (true) {
+        const step = gen.next();
+        if (step.done) {
+          steppedResult = step.value;
+          break;
+        }
+      }
+
+      expect(steppedResult.found).toBe(directResult.found);
+      expect(steppedResult.path).toEqual(directResult.path);
+      expect(steppedResult.nodesExplored).toBe(directResult.nodesExplored);
+    });
+
+    it('should include NodeState with g, h, f, parent in closedSet', () => {
+      const gen = findPathStepped(map, 0, 0, 5, 0);
+      gen.next();
+      gen.next();
+      const { value: state } = gen.next();
+
+      for (const [, node] of state.closedSet) {
+        expect(node).toHaveProperty('g');
+        expect(node).toHaveProperty('h');
+        expect(node).toHaveProperty('f');
+        expect(node).toHaveProperty('parentX');
+        expect(node).toHaveProperty('parentY');
+        expect(node.f).toBe(node.g + node.h);
+      }
+    });
+
+    it('should return not-found result when no path exists', () => {
+      for (let y = 0; y < 10; y++) {
+        map.setTile(5, y, Tiles.Wall);
+      }
+
+      const gen = findPathStepped(map, 0, 0, 9, 0);
+      let result;
+      while (true) {
+        const step = gen.next();
+        if (step.done) {
+          result = step.value;
+          break;
+        }
+      }
+
+      expect(result.found).toBe(false);
+      expect(result.path.length).toBe(0);
     });
   });
 

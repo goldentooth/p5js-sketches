@@ -1,7 +1,7 @@
 import type { Map as GameMap } from '../map/types.js';
 import type { Direction } from '../movement/directions.js';
 import { CARDINAL_DIRECTIONS, ALL_DIRECTIONS } from '../movement/directions.js';
-import type { PathNode, PathfindingOptions, PathResult } from './types.js';
+import type { PathNode, PathfindingOptions, PathResult, StepState, NodeState } from './types.js';
 
 /**
  * Internal node for A* with scoring
@@ -37,7 +37,70 @@ function chebyshevDistance(x1: number, y1: number, x2: number, y2: number): numb
 }
 
 /**
- * Find a path from start to goal using A* algorithm
+ * Convert an internal AStarNode to the public NodeState interface
+ */
+function toNodeState(node: AStarNode): NodeState {
+  return {
+    x: node.x,
+    y: node.y,
+    g: node.g,
+    h: node.h,
+    f: node.f,
+    parentX: node.parent ? node.parent.x : node.x,
+    parentY: node.parent ? node.parent.y : node.y,
+  };
+}
+
+/**
+ * Build a StepState snapshot from the current algorithm state
+ */
+function buildStepState(
+  openSet: AStarNode[],
+  closedMap: Map<string, AStarNode>,
+  current: AStarNode,
+  goalX: number,
+  goalY: number,
+  nodesExplored: number,
+  found: boolean,
+): StepState {
+  const openMap = new Map<string, NodeState>();
+  for (const node of openSet) {
+    openMap.set(nodeKey(node.x, node.y), toNodeState(node));
+  }
+
+  const closedSnapshot = new Map<string, NodeState>();
+  for (const [key, node] of closedMap) {
+    closedSnapshot.set(key, toNodeState(node));
+  }
+
+  return {
+    openSet: openMap,
+    closedSet: closedSnapshot,
+    current: { x: current.x, y: current.y },
+    goal: { x: goalX, y: goalY },
+    found,
+    nodesExplored,
+  };
+}
+
+/**
+ * Reconstruct the path from goal back to start (excluding start)
+ */
+function reconstructPath(goalNode: AStarNode): PathNode[] {
+  const path: PathNode[] = [];
+  let node: AStarNode | null = goalNode;
+  while (node !== null && node.parent !== null) {
+    path.unshift({ x: node.x, y: node.y });
+    node = node.parent;
+  }
+  return path;
+}
+
+/**
+ * Generator-based A* that yields StepState after each node expansion.
+ *
+ * Yields StepState on each step, returns PathResult when done.
+ * For start==goal or blocked start/goal, returns immediately with no yields.
  *
  * @param map - The game map to pathfind on
  * @param startX - Starting X coordinate
@@ -45,45 +108,39 @@ function chebyshevDistance(x1: number, y1: number, x2: number, y2: number): numb
  * @param goalX - Goal X coordinate
  * @param goalY - Goal Y coordinate
  * @param options - Pathfinding options
- * @returns PathResult with path (if found) and stats
- *
- * @example
- * ```typescript
- * const result = findPath(map, 5, 5, 15, 10);
- * if (result.found) {
- *   console.log('Path:', result.path);
- * }
- * ```
+ * @returns Generator yielding StepState, returning PathResult
  */
-export function findPath(
+export function* findPathStepped(
   map: GameMap,
   startX: number,
   startY: number,
   goalX: number,
   goalY: number,
   options: PathfindingOptions = {}
-): PathResult {
+): Generator<StepState, PathResult> {
   const {
     maxNodes = 1000,
     allowDiagonal = false,
     isBlocked,
   } = options;
 
-  // Use appropriate heuristic and directions
   const heuristic = allowDiagonal ? chebyshevDistance : manhattanDistance;
   const directions = allowDiagonal ? ALL_DIRECTIONS : CARDINAL_DIRECTIONS;
 
-  // Check if start or goal is blocked by terrain (walls)
-  // Note: We allow pathing TO an entity-blocked position (for attacking)
+  // Immediate returns: blocked start/goal or start==goal
   if (map.blocksMovement(startX, startY) || map.blocksMovement(goalX, goalY)) {
     return { path: [], found: false, nodesExplored: 0 };
   }
 
-  // Open set (nodes to explore) - use array as simple priority queue
+  if (startX === goalX && startY === goalY) {
+    return { path: [], found: true, nodesExplored: 0 };
+  }
+
+  // Open set (nodes to explore) - array as simple priority queue
   const openSet: AStarNode[] = [];
 
-  // Closed set (already explored)
-  const closedSet = new Set<string>();
+  // Closed set tracking both keys and full nodes for StepState snapshots
+  const closedMap = new Map<string, AStarNode>();
 
   // Map from position key to best node at that position
   const nodeMap = new Map<string, AStarNode>();
@@ -112,19 +169,15 @@ export function findPath(
 
     nodesExplored++;
 
+    // Add to closed set
+    closedMap.set(currentKey, current);
+
     // Check if we reached the goal
     if (current.x === goalX && current.y === goalY) {
-      // Reconstruct path
-      const path: PathNode[] = [];
-      let node: AStarNode | null = current;
-      while (node !== null && node.parent !== null) {
-        path.unshift({ x: node.x, y: node.y });
-        node = node.parent;
-      }
+      const path = reconstructPath(current);
+      yield buildStepState(openSet, closedMap, current, goalX, goalY, nodesExplored, true);
       return { path, found: true, nodesExplored };
     }
-
-    closedSet.add(currentKey);
 
     // Explore neighbors
     for (const dir of directions) {
@@ -132,33 +185,23 @@ export function findPath(
       const ny = current.y + dir.dy;
       const neighborKey = nodeKey(nx, ny);
 
-      // Skip if already explored
-      if (closedSet.has(neighborKey)) continue;
-
-      // Skip if out of bounds
+      if (closedMap.has(neighborKey)) continue;
       if (!map.isInBounds(nx, ny)) continue;
-
-      // Skip if blocked by terrain
       if (map.blocksMovement(nx, ny)) continue;
-
-      // Skip if blocked by entity (but allow goal position)
       if (isBlocked && isBlocked(nx, ny) && !(nx === goalX && ny === goalY)) {
         continue;
       }
 
-      // Calculate scores
       const moveCost = allowDiagonal && dir.dx !== 0 && dir.dy !== 0 ? 1.414 : 1;
       const tentativeG = current.g + moveCost;
       const h = heuristic(nx, ny, goalX, goalY);
       const f = tentativeG + h;
 
-      // Check if we already have a better path to this node
       const existing = nodeMap.get(neighborKey);
       if (existing && existing.g <= tentativeG) {
         continue;
       }
 
-      // Create or update node
       const neighbor: AStarNode = {
         x: nx,
         y: ny,
@@ -170,21 +213,57 @@ export function findPath(
 
       nodeMap.set(neighborKey, neighbor);
 
-      // Add to open set if not already there
       if (!existing) {
         openSet.push(neighbor);
       } else {
-        // Update existing node in open set
         const idx = openSet.findIndex(n => n.x === nx && n.y === ny);
         if (idx >= 0) {
           openSet[idx] = neighbor;
         }
       }
     }
+
+    // Yield after processing this node and its neighbors
+    yield buildStepState(openSet, closedMap, current, goalX, goalY, nodesExplored, false);
   }
 
   // No path found
   return { path: [], found: false, nodesExplored };
+}
+
+/**
+ * Find a path from start to goal using A* algorithm
+ *
+ * @param map - The game map to pathfind on
+ * @param startX - Starting X coordinate
+ * @param startY - Starting Y coordinate
+ * @param goalX - Goal X coordinate
+ * @param goalY - Goal Y coordinate
+ * @param options - Pathfinding options
+ * @returns PathResult with path (if found) and stats
+ *
+ * @example
+ * ```typescript
+ * const result = findPath(map, 5, 5, 15, 10);
+ * if (result.found) {
+ *   console.log('Path:', result.path);
+ * }
+ * ```
+ */
+export function findPath(
+  map: GameMap,
+  startX: number,
+  startY: number,
+  goalX: number,
+  goalY: number,
+  options: PathfindingOptions = {}
+): PathResult {
+  const gen = findPathStepped(map, startX, startY, goalX, goalY, options);
+  let step = gen.next();
+  while (!step.done) {
+    step = gen.next();
+  }
+  return step.value;
 }
 
 /**
