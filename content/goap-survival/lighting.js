@@ -21,8 +21,9 @@ function getSunLevel(tick) {
   // Sinusoidal: peak at tick 30 (noon), trough at tick 90 (midnight)
   // sin goes from -1 to 1, we map to 0..1
   var phase = (tick / CYCLE_LENGTH) * Math.PI * 2;
-  // Shift so tick 0 = dawn (sun rising), tick 30 = noon, tick 60 = dusk, tick 90 = midnight
-  var raw = Math.sin(phase - Math.PI / 2);
+  // tick 0 = dawn (sin=0 → level=0.5), tick 30 = noon (sin=1 → level=1),
+  // tick 60 = dusk (sin=0 → level=0.5), tick 90 = midnight (sin=-1 → level=0)
+  var raw = Math.sin(phase);
   // Map [-1, 1] to [0, 1] and clamp
   var level = (raw + 1) / 2;
   return Math.max(0, Math.min(1, level));

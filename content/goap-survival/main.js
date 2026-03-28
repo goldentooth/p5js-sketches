@@ -649,6 +649,12 @@ function regenerateWorld() {
   world.addSystem(movementSystem);
   world.addSystem(viewshedSystem);
 
+  // Pre-register components used in queries before any entities exist
+  // (query() throws if a component name hasn't been registered yet)
+  world.registerComponent("AIControlled");
+  world.registerComponent("Dead");
+  world.registerComponent("Name");
+
   // Spawn agent
   var spawnPos = findSpawnPosition(map, rng);
   agentEntity = world.createEntity();
@@ -823,18 +829,15 @@ function doTick() {
   // Run ECS tick
   world.tick();
 
-  // Check for agent death
+  // Check for agent death — either Dead tag (from needs hitting 0)
+  // or entity destroyed by combat (destroyEntity removes all components)
   var dead = world.getComponent(agentEntity, "Dead");
-  if (dead) {
+  var agentAlive = world.getComponent(agentEntity, "Position");
+  if (dead || !agentAlive) {
     deathCount++;
     replanCount = 0;
     regenerateWorld();
     return;
-  }
-
-  // Increment clock
-  if (clock) {
-    clock.tick++;
   }
 
   aliveTicks++;
