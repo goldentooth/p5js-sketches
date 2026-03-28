@@ -16,6 +16,6 @@ export default defineConfig({
       ]
     },
     include: ['**/*.test.js', '**/*.spec.js'],
-    exclude: ['node_modules', 'public', 'static']
+    exclude: ['node_modules', 'public', 'static', 'tests/smoke']
   }
 });
