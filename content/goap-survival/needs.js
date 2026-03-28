@@ -67,8 +67,17 @@ var GoalSelectionSystem = class {
 
       var best = this.selectGoal(needs, world, entity, tick);
 
-      // If goal changed, trigger replan
-      if (!agent.currentGoal || !goalsEqual(agent.currentGoal, best)) {
+      // Goal hysteresis: if executing a plan, require significant priority
+      // jump to switch goals (prevents oscillation on minor need fluctuations)
+      var shouldSwitch = true;
+      if (agent.currentGoal && agent.currentPlan &&
+          agent.planStepIndex < agent.currentPlan.actions.length) {
+        if (best.priority <= agent.currentGoal.priority + 15) {
+          shouldSwitch = false;
+        }
+      }
+
+      if (shouldSwitch && (!agent.currentGoal || !goalsEqual(agent.currentGoal, best))) {
         agent.currentGoal = best;
         agent.currentPlan = null;
         agent.planStepIndex = 0;

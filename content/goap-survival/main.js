@@ -39,27 +39,10 @@ var GoapPlanningSystem = class {
       var pos = world.getComponent(entity, "Position");
       if (!agent || !pos) continue;
 
-      // Check if we need to plan
-      var shouldPlan = false;
-
+      // Plan commitment: only replan when goal changes (needsReplan) or
+      // no plan exists. Do NOT revalidate per-tick — that causes oscillation
+      // when dynamic move_to costs shift with agent position.
       if (!agent.currentPlan || agent.needsReplan) {
-        shouldPlan = true;
-      } else if (agent.planStepIndex >= agent.currentPlan.actions.length) {
-        // Plan complete -- goal selection will pick a new goal next tick
-        shouldPlan = false;
-      } else {
-        // Validate remaining plan steps (skip already-completed ones)
-        var ws = buildWorldState(world, gameMap, entity, tick);
-        var remaining = {
-          actions: agent.currentPlan.actions.slice(agent.planStepIndex),
-          goal: agent.currentPlan.goal,
-        };
-        if (!Nuglib.validatePlan(agent.planner, ws, remaining)) {
-          shouldPlan = true;
-        }
-      }
-
-      if (shouldPlan) {
         this.makePlan(world, entity, agent, gameMap, tick);
       }
     }
@@ -89,7 +72,10 @@ var GoapPlanningSystem = class {
 var PlanExecutionSystem = class {
   constructor() {
     this.phase = "early";
-    this.moveTarget = null; // { x, y } for current move_to destination
+    this.moveTarget = null;
+    this.pathGoal = null;
+    this._lastPlan = null;
+    this._lastStepIndex = -1;
   }
 
   run(world) {
@@ -107,6 +93,14 @@ var PlanExecutionSystem = class {
       if (!agent || !agent.currentPlan) continue;
       if (agent.planStepIndex >= agent.currentPlan.actions.length) continue;
 
+      // Clear pathfinding state when plan or step changes
+      if (agent.currentPlan !== this._lastPlan || agent.planStepIndex !== this._lastStepIndex) {
+        this.moveTarget = null;
+        this.pathGoal = null;
+        this._lastPlan = agent.currentPlan;
+        this._lastStepIndex = agent.planStepIndex;
+      }
+
       var currentAction = agent.currentPlan.actions[agent.planStepIndex];
       var pos = world.getComponent(entity, "Position");
       var needs = world.getComponent(entity, "Needs");
@@ -118,6 +112,7 @@ var PlanExecutionSystem = class {
       if (done) {
         agent.planStepIndex++;
         this.moveTarget = null;
+        this.pathGoal = null;
       }
     }
   }
@@ -187,22 +182,39 @@ var PlanExecutionSystem = class {
     var targetType = name.replace("move_to_", "");
     var featureType = FEATURE_NONE;
     var wantClear = false;
+    var wantWater = false;
 
     if (targetType === "tree") featureType = FEATURE_TREE;
     else if (targetType === "rock") featureType = FEATURE_ROCK;
     else if (targetType === "berries") featureType = FEATURE_BERRY;
     else if (targetType === "sticks") featureType = FEATURE_STICKS;
     else if (targetType === "fire") featureType = FEATURE_FIRE;
+    else if (targetType === "shelter") featureType = FEATURE_SHELTER;
     else if (targetType === "clear") wantClear = true;
+    else if (targetType === "water") wantWater = true;
 
-    // Find nearest target if we don't have one or reached the old one
+    // Find nearest target if we don't have one
     if (!this.moveTarget) {
-      var nearest = findNearestFeaturePosition(gameMap, pos.x, pos.y, featureType, wantClear);
+      var nearest;
+      if (wantWater) {
+        nearest = findNearestTerrain(gameMap, pos.x, pos.y, TERRAIN_WATER);
+      } else {
+        nearest = findNearestFeaturePosition(gameMap, pos.x, pos.y, featureType, wantClear);
+      }
       if (!nearest) return true; // can't find target, skip
       this.moveTarget = nearest;
+
+      // If target tile is blocked (rocks, water), path to a walkable neighbor
+      if (gameMap.blocksMovement(nearest.x, nearest.y)) {
+        var neighbor = this.findWalkableNeighbor(gameMap, nearest.x, nearest.y);
+        if (!neighbor) return true;
+        this.pathGoal = neighbor;
+      } else {
+        this.pathGoal = nearest;
+      }
     }
 
-    // Check if adjacent to the target (for rocks/features that block movement)
+    // Check if adjacent to the target (for blocked features: rocks, water)
     if (Nuglib.isAdjacent(pos.x, pos.y, this.moveTarget.x, this.moveTarget.y)) {
       return true; // arrived adjacent
     }
@@ -212,16 +224,29 @@ var PlanExecutionSystem = class {
       return true; // arrived
     }
 
-    // Pathfind one step toward target
-    var dir = Nuglib.getStepToward(gameMap, pos.x, pos.y, this.moveTarget.x, this.moveTarget.y);
+    // Pathfind one step toward goal (walkable neighbor if target is blocked)
+    var goal = this.pathGoal || this.moveTarget;
+    var dir = Nuglib.getStepToward(gameMap, pos.x, pos.y, goal.x, goal.y);
     if (dir) {
       this.queueMove(world, entity, dir);
     } else {
-      // Can't reach, give up on this action
-      return true;
+      return true; // can't reach, give up
     }
 
     return false; // not done yet, still moving
+  }
+
+  findWalkableNeighbor(gameMap, x, y) {
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var nx = x + dx;
+        var ny = y + dy;
+        if (nx < 0 || nx >= MAP_COLS || ny < 0 || ny >= MAP_ROWS) continue;
+        if (!gameMap.blocksMovement(nx, ny)) return { x: nx, y: ny };
+      }
+    }
+    return null;
   }
 
   executeGather(world, entity, pos, inventory, featureType, inventoryKey, amount) {
