@@ -619,6 +619,19 @@ function regenerateWorld() {
 
   // Create ECS world
   world = Nuglib.createWorld();
+
+  // Pre-register components used in queries before any entity exists
+  // (query() throws if a component name hasn't been seen yet)
+  var preRegister = [
+    "AIControlled", "Action", "Dead", "Name",
+    "Position", "Glyph", "BlocksMovement", "Energy",
+    "CombatStats", "Viewshed", "Memory",
+    "Needs", "Inventory", "GoapAgent",
+  ];
+  for (var i = 0; i < preRegister.length; i++) {
+    world.registerComponent(preRegister[i]);
+  }
+
   world.addResource("GameClock", Nuglib.createGameClock());
   world.addResource("map", map);
   world.addResource("SurvivalStats", {

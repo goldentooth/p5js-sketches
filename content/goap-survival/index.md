@@ -1,6 +1,6 @@
 ---
 title: "GOAP Survival"
-date: 2026-03-28T00:00:00-05:00
+date: 2026-03-27T12:00:00-04:00
 description: "Educational single-agent survival demo using Goal-Oriented Action Planning (GOAP) with a real-time plan inspector"
 usage: "Watch the agent survive in a procedural wilderness. The side panel shows GOAP reasoning in real time. Toggle between Proactive (plans ahead) and Reactive (only responds to current needs) modes."
 draft: false
