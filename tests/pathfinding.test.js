@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMap, findPath, findPathStepped, getStepToward, distance, isAdjacent, Tiles } from '../src';
+import { createMap, findPath, findPathStepped, getStepToward, distance, isAdjacent, findPathDijkstra, findPathDijkstraStepped, Tiles } from '../src';
 
 describe('Pathfinding', () => {
   describe('findPath', () => {
@@ -269,6 +269,58 @@ describe('Pathfinding', () => {
 
       expect(result.found).toBe(false);
       expect(result.path.length).toBe(0);
+    });
+  });
+
+  describe('Dijkstra', () => {
+    let map;
+
+    beforeEach(() => {
+      map = createMap(10, 10, { edgeBehavior: 'block' });
+      for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+          map.setTile(x, y, Tiles.Floor);
+        }
+      }
+    });
+
+    it('should find optimal path on open map', () => {
+      const result = findPathDijkstra(map, 0, 0, 5, 0);
+      expect(result.found).toBe(true);
+      expect(result.path.length).toBe(5);
+    });
+
+    it('should explore more nodes than A* (no heuristic)', () => {
+      const dijkstraResult = findPathDijkstra(map, 0, 0, 9, 0);
+      const astarResult = findPath(map, 0, 0, 9, 0);
+      expect(dijkstraResult.found).toBe(true);
+      expect(dijkstraResult.path.length).toBe(astarResult.path.length);
+      expect(dijkstraResult.nodesExplored).toBeGreaterThanOrEqual(astarResult.nodesExplored);
+    });
+
+    it('should find path around obstacles', () => {
+      map.setTile(2, 0, Tiles.Wall);
+      map.setTile(2, 1, Tiles.Wall);
+      map.setTile(2, 2, Tiles.Wall);
+      const result = findPathDijkstra(map, 0, 0, 4, 0);
+      expect(result.found).toBe(true);
+      expect(result.path.length).toBeGreaterThan(4);
+    });
+
+    it('should return no path when completely blocked', () => {
+      for (let y = 0; y < 10; y++) map.setTile(5, y, Tiles.Wall);
+      const result = findPathDijkstra(map, 0, 0, 9, 0);
+      expect(result.found).toBe(false);
+    });
+
+    it('stepper should have h=0 for all nodes', () => {
+      const gen = findPathDijkstraStepped(map, 0, 0, 5, 0);
+      gen.next();
+      const { value: state } = gen.next();
+      for (const [, node] of state.closedSet) {
+        expect(node.h).toBe(0);
+        expect(node.f).toBe(node.g);
+      }
     });
   });
 
