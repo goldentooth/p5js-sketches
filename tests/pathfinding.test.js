@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMap, findPath, findPathStepped, getStepToward, distance, isAdjacent, findPathDijkstra, findPathDijkstraStepped, findPathGreedy, findPathGreedyStepped, Tiles } from '../src';
+import { createMap, findPath, findPathStepped, getStepToward, distance, isAdjacent, findPathDijkstra, findPathDijkstraStepped, findPathGreedy, findPathGreedyStepped, findPathBFS, findPathBFSStepped, Tiles } from '../src';
 
 describe('Pathfinding', () => {
   describe('findPath', () => {
@@ -413,6 +413,66 @@ describe('Pathfinding', () => {
     it('should return false for distant positions', () => {
       expect(isAdjacent(0, 0, 2, 0)).toBe(false);
       expect(isAdjacent(0, 0, 5, 5)).toBe(false);
+    });
+  });
+
+  describe('BFS', () => {
+    let map;
+
+    beforeEach(() => {
+      map = createMap(10, 10, { edgeBehavior: 'block' });
+      for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+          map.setTile(x, y, Tiles.Floor);
+        }
+      }
+    });
+
+    it('should find shortest path (fewest hops) on open map', () => {
+      const result = findPathBFS(map, 0, 0, 5, 0);
+      expect(result.found).toBe(true);
+      expect(result.path.length).toBe(5);
+    });
+
+    it('should find path around obstacles', () => {
+      map.setTile(2, 0, Tiles.Wall);
+      map.setTile(2, 1, Tiles.Wall);
+      map.setTile(2, 2, Tiles.Wall);
+      const result = findPathBFS(map, 0, 0, 4, 0);
+      expect(result.found).toBe(true);
+      expect(result.path.length).toBeGreaterThan(4);
+    });
+
+    it('should return no path when completely blocked', () => {
+      for (let y = 0; y < 10; y++) map.setTile(5, y, Tiles.Wall);
+      const result = findPathBFS(map, 0, 0, 9, 0);
+      expect(result.found).toBe(false);
+    });
+
+    it('stepper should track depth as g, h=0', () => {
+      const gen = findPathBFSStepped(map, 0, 0, 5, 0);
+      gen.next();
+      const { value: state } = gen.next();
+      for (const [, node] of state.closedSet) {
+        expect(node.h).toBe(0);
+        expect(node.f).toBe(node.g);
+        expect(Number.isInteger(node.g)).toBe(true);
+      }
+    });
+
+    it('should expand in rings (nodes at depth N explored before depth N+1)', () => {
+      const gen = findPathBFSStepped(map, 4, 4, 9, 9);
+      const depths = [];
+      let step = gen.next();
+      while (!step.done) {
+        const state = step.value;
+        const currentNode = state.closedSet.get(`${state.current.x},${state.current.y}`);
+        if (currentNode) depths.push(currentNode.g);
+        step = gen.next();
+      }
+      for (let i = 1; i < depths.length; i++) {
+        expect(depths[i]).toBeGreaterThanOrEqual(depths[i - 1]);
+      }
     });
   });
 });
