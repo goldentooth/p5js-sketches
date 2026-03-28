@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js"></script>
+  <script src="nuglib.min.js"></script>
+  <script src="map-gen.js"></script>
+  <script src="lighting.js"></script>
+  <script src="actions.js"></script>
+  <script src="world-state.js"></script>
+  <script src="needs.js"></script>
+</head>
+<body>
+<script>
+// Inline the systems from main.js without the p5 setup/draw/rendering
+</script>
+<script src="main.js"></script>
+<script>
+// Override p5's auto-launch — we drive the loop manually
+window.__headless = true;
+
+function runTrial(maxTicks) {
+  // Suppress rendering
+  regenerateWorld();
+
+  var clock = world.getResource("GameClock");
+  var startTick = clock ? clock.tick : 0;
+
+  for (var t = 0; t < maxTicks; t++) {
+    doTick();
+
+    // Check if agent died (regenerateWorld was called)
+    var newClock = world.getResource("GameClock");
+    if (newClock !== clock || (newClock && newClock.tick < startTick + t)) {
+      // World was regenerated — agent died
+      var needs = null; // already reset
+      return {
+        survived: t,
+        cause: "unknown",
+      };
+    }
+  }
+
+  return {
+    survived: maxTicks,
+    cause: "alive",
+  };
+}
+
+function runTrials(numTrials, maxTicks) {
+  var results = [];
+  var deathsByCause = {};
+  var totalSurvived = 0;
+
+  for (var i = 0; i < numTrials; i++) {
+    // Track death cause by hooking into the Dead component
+    var lastDeathCause = null;
+
+    // Save original addComponent
+    var origAddComponent = world ? world.addComponent.bind(world) : null;
+
+    regenerateWorld();
+    deathCount = 0;
+
+    // Hook addComponent to capture death cause
+    var currentWorld = world;
+    var origAdd = currentWorld.addComponent.bind(currentWorld);
+    currentWorld.addComponent = function(entity, name, data) {
+      if (name === "Dead" && data && data.cause) {
+        lastDeathCause = data.cause;
+      }
+      return origAdd(entity, name, data);
+    };
+
+    var clock = world.getResource("GameClock");
+
+    for (var t = 0; t < maxTicks; t++) {
+      // Capture needs before tick for death analysis
+      var needs = world.getComponent(agentEntity, "Needs");
+      var inv = world.getComponent(agentEntity, "Inventory");
+      var agent = world.getComponent(agentEntity, "GoapAgent");
+      var goalLabel = (agent && agent.currentGoal) ? getGoalLabel(agent.currentGoal) : "none";
+      var actionName = "idle";
+      if (agent && agent.currentPlan && agent.planStepIndex < agent.currentPlan.actions.length) {
+        actionName = agent.currentPlan.actions[agent.planStepIndex].name;
+      }
+
+      var preNeeds = needs ? {
+        hunger: needs.hunger,
+        warmth: needs.warmth,
+        health: needs.health
+      } : null;
+
+      doTick();
+
+      // Check if death occurred
+      if (deathCount > 0) {
+        var cause = lastDeathCause || "combat";
+        results.push({
+          trial: i + 1,
+          survived: t,
+          cause: cause,
+          lastGoal: goalLabel,
+          lastAction: actionName,
+          needsAtDeath: preNeeds,
+          hadAxe: inv ? inv.hasAxe : false,
+          hadTorch: inv ? inv.hasTorch : false,
+          hadPole: inv ? inv.hasFishingPole : false,
+          hadFood: inv ? inv.hasFood : false,
+        });
+        deathsByCause[cause] = (deathsByCause[cause] || 0) + 1;
+        totalSurvived += t;
+        break;
+      }
+
+      if (t === maxTicks - 1) {
+        results.push({
+          trial: i + 1,
+          survived: maxTicks,
+          cause: "alive",
+          lastGoal: goalLabel,
+          lastAction: actionName,
+          needsAtDeath: needs ? {
+            hunger: needs.hunger,
+            warmth: needs.warmth,
+            health: needs.health
+          } : null,
+          hadAxe: inv ? inv.hasAxe : false,
+          hadTorch: inv ? inv.hasTorch : false,
+          hadPole: inv ? inv.hasFishingPole : false,
+          hadFood: inv ? inv.hasFood : false,
+        });
+        totalSurvived += maxTicks;
+      }
+    }
+  }
+
+  return {
+    results: results,
+    summary: {
+      totalTrials: numTrials,
+      maxTicks: maxTicks,
+      avgSurvival: Math.round(totalSurvived / numTrials),
+      deathsByCause: deathsByCause,
+      survivalRate: results.filter(function(r) { return r.cause === "alive"; }).length / numTrials,
+    }
+  };
+}
+
+// Signal ready
+window.__trialRunner = runTrials;
+</script>
+</body>
+</html>
