@@ -12,7 +12,8 @@
     "test:coverage": "vitest --run --coverage",
     "test:watch": "vitest --watch",
     "typecheck": "tsc -p tsconfig.json",
-    "smoke": "npx playwright test"
+    "smoke": "npx playwright test",
+    "pin-nuglib": "node scripts/pin-nuglib.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
