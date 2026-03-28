@@ -284,7 +284,10 @@ function draw() {
     }
   }
 
-  // Draw monsters
+  // Draw monsters and health bars
+  var barHeight = 2;
+  var barPadding = 2;
+
   for (var entity of world.query(["Position", "Glyph"])) {
     var pos = world.getComponent(entity, "Position");
     var gl = world.getComponent(entity, "Glyph");
@@ -297,6 +300,29 @@ function draw() {
       pos.x * CHAR_W + CHAR_W / 2,
       pos.y * CHAR_H + CHAR_H / 2
     );
+
+    // Health bar — only show when injured
+    var stats = world.getComponent(entity, "CombatStats");
+    if (stats && stats.hp < stats.maxHp) {
+      var screenX = pos.x * CHAR_W;
+      var screenY = pos.y * CHAR_H;
+      var hpPercent = stats.hp / stats.maxHp;
+      var barWidth = Math.floor(CHAR_W * hpPercent);
+
+      // Background
+      gridLayer.fill(40);
+      gridLayer.rect(screenX, screenY - barHeight - barPadding, CHAR_W, barHeight);
+
+      // HP bar colored by health level
+      if (hpPercent > 0.5) {
+        gridLayer.fill(0, 200, 0);
+      } else if (hpPercent > 0.25) {
+        gridLayer.fill(200, 200, 0);
+      } else {
+        gridLayer.fill(200, 0, 0);
+      }
+      gridLayer.rect(screenX, screenY - barHeight - barPadding, barWidth, barHeight);
+    }
   }
 
   // Composite layers
