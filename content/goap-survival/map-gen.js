@@ -39,9 +39,9 @@ TERRAIN_GLYPHS[TERRAIN_DENSE_FOREST] = "\u2663"; // club suit
 TERRAIN_GLYPHS[TERRAIN_WATER] = "~";
 
 var TERRAIN_COLORS = {};
-TERRAIN_COLORS[TERRAIN_GRASS] = [34, 80, 34];
-TERRAIN_COLORS[TERRAIN_DENSE_FOREST] = [20, 60, 20];
-TERRAIN_COLORS[TERRAIN_WATER] = [30, 60, 180];
+TERRAIN_COLORS[TERRAIN_GRASS] = [70, 160, 70];
+TERRAIN_COLORS[TERRAIN_DENSE_FOREST] = [45, 110, 45];
+TERRAIN_COLORS[TERRAIN_WATER] = [60, 110, 220];
 
 var FEATURE_GLYPHS = {};
 FEATURE_GLYPHS[FEATURE_TREE] = "T";
@@ -51,11 +51,11 @@ FEATURE_GLYPHS[FEATURE_ROCK] = "^";
 FEATURE_GLYPHS[FEATURE_FIRE] = "*";
 
 var FEATURE_COLORS = {};
-FEATURE_COLORS[FEATURE_TREE] = [34, 139, 34];
-FEATURE_COLORS[FEATURE_BERRY] = [128, 0, 128];
-FEATURE_COLORS[FEATURE_STICKS] = [139, 69, 19];
-FEATURE_COLORS[FEATURE_ROCK] = [128, 128, 128];
-FEATURE_COLORS[FEATURE_FIRE] = [255, 165, 0];
+FEATURE_COLORS[FEATURE_TREE] = [50, 200, 50];
+FEATURE_COLORS[FEATURE_BERRY] = [200, 60, 200];
+FEATURE_COLORS[FEATURE_STICKS] = [200, 140, 70];
+FEATURE_COLORS[FEATURE_ROCK] = [180, 180, 180];
+FEATURE_COLORS[FEATURE_FIRE] = [255, 200, 50];
 
 // ─── Generation ────────────────────────────────────────────────────────────
 
@@ -164,12 +164,20 @@ function checkSpacing(x, y, featureType, minSpacing) {
 }
 
 function findSpawnPosition(map, rng) {
-  // Find a walkable tile with no feature, near center
-  for (var attempt = 0; attempt < 100; attempt++) {
+  // Find a walkable tile with no feature, near center, with at least 2 walkable neighbors
+  for (var attempt = 0; attempt < 200; attempt++) {
     var x = rng.nextRange(10, MAP_COLS - 10);
     var y = rng.nextRange(5, MAP_ROWS - 5);
     var idx = y * MAP_COLS + x;
-    if (!map.blocksMovement(x, y) && features[idx] === FEATURE_NONE) {
+    if (map.blocksMovement(x, y) || features[idx] !== FEATURE_NONE) continue;
+
+    // Ensure at least 2 walkable cardinal neighbors so agent isn't trapped
+    var walkable = 0;
+    if (!map.blocksMovement(x - 1, y)) walkable++;
+    if (!map.blocksMovement(x + 1, y)) walkable++;
+    if (!map.blocksMovement(x, y - 1)) walkable++;
+    if (!map.blocksMovement(x, y + 1)) walkable++;
+    if (walkable >= 2) {
       return { x: x, y: y };
     }
   }

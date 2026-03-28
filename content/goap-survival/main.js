@@ -90,6 +90,8 @@ var PlanExecutionSystem = class {
   constructor() {
     this.phase = "early";
     this.moveTarget = null; // { x, y } for current move_to destination
+    this.lastPlan = null;   // track plan identity to clear stale moveTarget
+    this.lastStepIndex = -1;
   }
 
   run(world) {
@@ -107,6 +109,13 @@ var PlanExecutionSystem = class {
       if (!agent || !agent.currentPlan) continue;
       if (agent.planStepIndex >= agent.currentPlan.actions.length) continue;
 
+      // Clear stale moveTarget when plan or step changes (e.g. after replanning)
+      if (agent.currentPlan !== this.lastPlan || agent.planStepIndex !== this.lastStepIndex) {
+        this.moveTarget = null;
+        this.lastPlan = agent.currentPlan;
+        this.lastStepIndex = agent.planStepIndex;
+      }
+
       var currentAction = agent.currentPlan.actions[agent.planStepIndex];
       var pos = world.getComponent(entity, "Position");
       var needs = world.getComponent(entity, "Needs");
@@ -118,6 +127,7 @@ var PlanExecutionSystem = class {
       if (done) {
         agent.planStepIndex++;
         this.moveTarget = null;
+        this.lastStepIndex = agent.planStepIndex;
       }
     }
   }
