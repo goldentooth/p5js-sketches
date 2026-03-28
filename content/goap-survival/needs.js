@@ -26,8 +26,20 @@ var NeedDecaySystem = class {
       // Hunger decays at constant rate
       needs.hunger = Math.max(0, needs.hunger - 1);
 
-      // Warmth decays faster at night
+      // Warmth decays faster at night; shelter halves decay
       var warmthDecay = nightTime ? 2 : 0.5;
+      var pos = world.getComponent(entity, "Position");
+      if (pos) {
+        for (var sdy = -1; sdy <= 1; sdy++) {
+          for (var sdx = -1; sdx <= 1; sdx++) {
+            if (sdx === 0 && sdy === 0) continue;
+            if (getFeatureAt(pos.x + sdx, pos.y + sdy) === FEATURE_SHELTER) {
+              warmthDecay *= 0.5;
+              sdy = 2; sdx = 2; // break both loops
+            }
+          }
+        }
+      }
       needs.warmth = Math.max(0, needs.warmth - warmthDecay);
 
       // Health doesn't decay naturally (only from attacks)

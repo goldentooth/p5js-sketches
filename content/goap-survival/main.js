@@ -173,6 +173,13 @@ var PlanExecutionSystem = class {
       case "flee":
         return this.executeFlee(world, entity, pos, gameMap);
 
+      case "build_shelter":
+        return this.executeBuildShelter(world, entity, pos, inventory, gameMap);
+
+      case "warm_at_shelter":
+        needs.warmth = Math.min(100, needs.warmth + 20);
+        return true;
+
       default:
         return true; // unknown action, skip
     }
@@ -343,6 +350,33 @@ var PlanExecutionSystem = class {
     return true;
   }
 
+  executeBuildShelter(world, entity, pos, inventory, gameMap) {
+    if (inventory.wood < 4 || inventory.sticks < 2) return true;
+
+    // Find adjacent clear grass tile
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var nx = pos.x + dx;
+        var ny = pos.y + dy;
+        if (nx < 0 || nx >= MAP_COLS || ny < 0 || ny >= MAP_ROWS) continue;
+        if (gameMap.blocksMovement(nx, ny)) continue;
+        if (getFeatureAt(nx, ny) !== FEATURE_NONE) continue;
+        if (getTerrainAt(nx, ny) !== TERRAIN_GRASS) continue;
+
+        inventory.wood -= 4;
+        inventory.sticks -= 2;
+        setFeatureAt(nx, ny, FEATURE_SHELTER);
+        world.addComponent(entity, "Action", {
+          type: "wait",
+          energyCost: 150,
+        });
+        return true;
+      }
+    }
+    return true;
+  }
+
   executeFlee(world, entity, pos, gameMap) {
     // Find nearest threat and move away
     var viewshed = world.getComponent(entity, "Viewshed");
@@ -453,6 +487,12 @@ var MonsterAISystem = class {
                 if (blockedPositions.has(x + "," + y)) return true;
                 // Avoid lit tiles
                 if (getLightAt(x, y) > 0.5) return true;
+                // Shelter safe zone: avoid tiles adjacent to shelter
+                for (var sdy = -1; sdy <= 1; sdy++) {
+                  for (var sdx = -1; sdx <= 1; sdx++) {
+                    if (getFeatureAt(x + sdx, y + sdy) === FEATURE_SHELTER) return true;
+                  }
+                }
                 return false;
               },
             }
@@ -484,6 +524,11 @@ var MonsterAISystem = class {
           if (x === pos.x && y === pos.y) return false;
           if (blockedPositions.has(x + "," + y)) return true;
           if (getLightAt(x, y) > 0.5) return true;
+          for (var sdy = -1; sdy <= 1; sdy++) {
+            for (var sdx = -1; sdx <= 1; sdx++) {
+              if (getFeatureAt(x + sdx, y + sdy) === FEATURE_SHELTER) return true;
+            }
+          }
           return false;
         },
       }
