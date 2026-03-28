@@ -2,6 +2,7 @@ export * from './color';
 export * from './controls';
 export * from './ecs';
 export * from './fov';
+export * from './goap';
 export * from './glyph';
 export * from './grid';
 export * from './input';
