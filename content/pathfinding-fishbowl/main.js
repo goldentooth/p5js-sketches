@@ -61,7 +61,7 @@ var map, rooms;
 var world;
 var aiSystem, movementSystem, actionExecutionSystem;
 var energyRegenSystem, viewshedSystem;
-var grid, gridRenderer, layerManager, palette;
+var layerManager;
 var playing = true;
 var playSpeed = 10;
 var lastTickTime = 0;
@@ -128,24 +128,11 @@ function setup() {
 
 // ─── Rendering Setup ────────────────────────────────────────────────────────
 function initRendering() {
-  grid = Nuglib.createGrid(COLS, ROWS);
-
-  gridRenderer = Nuglib.GridRenderer({
-    cellWidth: CHAR_W,
-    cellHeight: CHAR_H,
-    backgroundColor: color(0),
-  });
-
   layerManager = new Nuglib.LayerManager(window);
   layerManager.createLayer(
     "grid",
     Nuglib.createTextLayerConfig(width, height, CHAR_H, "Courier New")
   );
-
-  // Glyph palette for map tiles
-  palette = new Nuglib.GlyphPalette();
-  palette.registerGlyph("wall", "#", [128, 128, 128], [0, 0, 0]);
-  palette.registerGlyph("floor", "\u00B7", [60, 60, 60], [0, 0, 0]);
 }
 
 // ─── Map Generation & World Setup ───────────────────────────────────────────
@@ -206,20 +193,19 @@ function spawnRandomMonster() {
 }
 
 function respawnIfNeeded() {
-  var current = countMonsters();
-  var total = current.goblins + current.orcs + current.trolls;
-
-  if (total < targetPopulation) {
+  var counts = countMonsters();
+  if (counts.total < targetPopulation) {
     spawnRandomMonster();
   }
 }
 
 function countMonsters() {
-  var counts = { goblins: 0, orcs: 0, trolls: 0 };
+  var counts = { goblins: 0, orcs: 0, trolls: 0, total: 0 };
 
   for (var entity of world.query(["AIControlled", "Name"])) {
     var name = world.getComponent(entity, "Name");
     if (!name) continue;
+    counts.total++;
     if (name.name === "Goblin") counts.goblins++;
     else if (name.name === "Orc") counts.orcs++;
     else if (name.name === "Troll") counts.trolls++;
@@ -231,26 +217,18 @@ function countMonsters() {
 // ─── Tick ───────────────────────────────────────────────────────────────────
 function doTick() {
   // Count before tick to detect kills
-  var beforeCount = countTotal();
+  var before = countMonsters();
 
   world.tick();
   respawnIfNeeded();
 
   // Count kills
-  var afterCount = countTotal();
-  if (afterCount < beforeCount) {
-    totalKills += beforeCount - afterCount;
+  var after = countMonsters();
+  if (after.total < before.total) {
+    totalKills += before.total - after.total;
   }
 
   updateStats();
-}
-
-function countTotal() {
-  var total = 0;
-  for (var _entity of world.query(["AIControlled"])) {
-    total++;
-  }
-  return total;
 }
 
 // ─── Stats ──────────────────────────────────────────────────────────────────
@@ -258,12 +236,11 @@ function updateStats() {
   if (!statGoblins) return;
 
   var counts = countMonsters();
-  var total = counts.goblins + counts.orcs + counts.trolls;
 
   statGoblins.html(String(counts.goblins));
   statOrcs.html(String(counts.orcs));
   statTrolls.html(String(counts.trolls));
-  statTotal.html(String(total));
+  statTotal.html(String(counts.total));
   statTarget.html(String(targetPopulation));
   statKills.html(String(totalKills));
 }
