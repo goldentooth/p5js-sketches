@@ -53,8 +53,8 @@ const bottleneck = (() => {
     width: W,
     height: H,
     tiles,
-    start: { x: 5, y: 10 },
-    goal: { x: 24, y: 10 },
+    start: { x: 5, y: 3 },
+    goal: { x: 24, y: 16 },
   };
 })();
 
@@ -172,4 +172,4 @@ const pillars = (() => {
 })();
 
 // ─── Export ──────────────────────────────────────────────────────────────────
-const EXAMPLE_MAPS = [openRoom, bottleneck, maze, uTrap, pillars];
+var EXAMPLE_MAPS = [openRoom, bottleneck, maze, uTrap, pillars];

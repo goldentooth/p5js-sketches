@@ -37,7 +37,7 @@ let speedSlider, speedValue, statExplored, statFrontier, statPath;
 function setup() {
   mapDef = EXAMPLE_MAPS[0];
   const cnv = createCanvas(mapDef.width * TILE_W, mapDef.height * TILE_H);
-  cnv.parent(select(".sketch-container"));
+  cnv.parent(select("#sketch-container"));
   textFont("monospace");
   textAlign(CENTER, CENTER);
   noStroke();
