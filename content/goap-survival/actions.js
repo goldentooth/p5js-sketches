@@ -66,6 +66,48 @@ var SURVIVAL_ACTIONS = [
     effects: { threat_visible: false },
     cost: 0,
   },
+  {
+    name: "craft_fishing_pole",
+    preconditions: { stick_count: 2, stone_count: 1 },
+    effects: { has_fishing_pole: true, stick_count: -2, stone_count: -1 },
+    cost: 2,
+  },
+  {
+    name: "build_shelter",
+    preconditions: { wood_count: 4, stick_count: 2, near_clear: true },
+    effects: { near_shelter: true, wood_count: -4, stick_count: -2 },
+    cost: 5,
+  },
+  {
+    name: "catch_fish",
+    preconditions: { has_fishing_pole: true, near_water: true },
+    effects: { has_raw_fish: true },
+    cost: 2,
+  },
+  {
+    name: "cook_fish",
+    preconditions: { has_raw_fish: true, near_fire: true },
+    effects: { has_cooked_fish: true, has_raw_fish: false },
+    cost: 1,
+  },
+  {
+    name: "eat_raw_fish",
+    preconditions: { has_raw_fish: true },
+    effects: { hunger: 15, has_raw_fish: false },
+    cost: 1,
+  },
+  {
+    name: "eat_cooked_fish",
+    preconditions: { has_cooked_fish: true },
+    effects: { hunger: 60, has_cooked_fish: false },
+    cost: 1,
+  },
+  {
+    name: "warm_at_shelter",
+    preconditions: { near_shelter: true },
+    effects: { warmth: 20 },
+    cost: 1,
+  },
 ];
 
 // ─── Move-To Actions ───────────────────────────────────────────────────────
@@ -78,6 +120,8 @@ var MOVE_TARGETS = [
   { target: "sticks", feature: FEATURE_STICKS, stateKey: "near_sticks" },
   { target: "fire", feature: FEATURE_FIRE, stateKey: "near_fire" },
   { target: "clear", feature: FEATURE_NONE, stateKey: "near_clear" },
+  { target: "water", terrain: TERRAIN_WATER, stateKey: "near_water" },
+  { target: "shelter", feature: FEATURE_SHELTER, stateKey: "near_shelter" },
 ];
 
 function buildMoveToActions(map, agentX, agentY) {
@@ -85,7 +129,12 @@ function buildMoveToActions(map, agentX, agentY) {
 
   for (var i = 0; i < MOVE_TARGETS.length; i++) {
     var mt = MOVE_TARGETS[i];
-    var nearest = findNearestFeature(map, agentX, agentY, mt.feature, mt.target === "clear");
+    var nearest;
+    if (mt.terrain !== undefined) {
+      nearest = findNearestTerrain(map, agentX, agentY, mt.terrain);
+    } else {
+      nearest = findNearestFeature(map, agentX, agentY, mt.feature, mt.target === "clear");
+    }
     if (!nearest) continue;
 
     var dist = Math.abs(nearest.x - agentX) + Math.abs(nearest.y - agentY);
@@ -104,6 +153,25 @@ function buildMoveToActions(map, agentX, agentY) {
   }
 
   return moveActions;
+}
+
+function findNearestTerrain(map, ax, ay, terrainType) {
+  var best = null;
+  var bestDist = Infinity;
+
+  for (var y = 0; y < MAP_ROWS; y++) {
+    for (var x = 0; x < MAP_COLS; x++) {
+      if (getTerrainAt(x, y) !== terrainType) continue;
+
+      var dist = Math.abs(x - ax) + Math.abs(y - ay);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = { x: x, y: y };
+      }
+    }
+  }
+
+  return best;
 }
 
 function findNearestFeature(map, ax, ay, featureType, wantClear) {
