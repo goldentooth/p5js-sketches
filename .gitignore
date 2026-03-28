@@ -27,6 +27,7 @@ Thumbs.db
 *~
 .hugo_build.lock
 coverage/
+.superpowers/
 
 # Playwright
 test-results/

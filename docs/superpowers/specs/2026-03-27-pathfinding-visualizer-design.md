@@ -14,13 +14,13 @@ A second sketch (pathfinding fishbowl — monsters roaming with random goals) is
 
 Four new algorithms alongside the existing A*, each in its own file under `src/pathfinding/`:
 
-| Algorithm | File | Key Trait |
-|---|---|---|
-| A* | `astar.ts` (existing) | Optimal, heuristic-guided |
-| Dijkstra | `dijkstra.ts` | Optimal, no heuristic — uniform expansion |
-| Greedy Best-First | `greedyBestFirst.ts` | Not optimal — heuristic only, beelines toward goal |
-| BFS | `bfs.ts` | Optimal for unweighted graphs — FIFO expansion in rings |
-| Jump Point Search | `jps.ts` | A* optimization for uniform-cost grids — skips symmetric paths |
+| Algorithm         | File                  | Key Trait                                                      |
+| ----------------- | --------------------- | -------------------------------------------------------------- |
+| A*                | `astar.ts` (existing) | Optimal, heuristic-guided                                      |
+| Dijkstra          | `dijkstra.ts`         | Optimal, no heuristic — uniform expansion                      |
+| Greedy Best-First | `greedyBestFirst.ts`  | Not optimal — heuristic only, beelines toward goal             |
+| BFS               | `bfs.ts`              | Optimal for unweighted graphs — FIFO expansion in rings        |
+| Jump Point Search | `jps.ts`              | A* optimization for uniform-cost grids — skips symmetric paths |
 
 All algorithms share the existing `PathResult` and `PathfindingOptions` interfaces. Each exports `findPath()` and `getStepToward()` matching the existing A* signatures.
 
@@ -76,16 +76,16 @@ Follows the existing roguelike sketch pattern (monsters, rooms-and-corridors):
 
 ### Color Scheme
 
-| State | Background Tint |
-|---|---|
-| Unexplored floor | No tint (dark) |
-| Open set (frontier) | Yellow/amber tint |
-| Closed set (explored) | Blue tint |
-| Current node | Bright amber |
-| Final path | Orange highlight |
-| Wall | Gray `#` glyphs |
-| Start | Blue `@` with glow |
-| Goal | Green `★` with glow |
+| State                 | Background Tint     |
+| --------------------- | ------------------- |
+| Unexplored floor      | No tint (dark)      |
+| Open set (frontier)   | Yellow/amber tint   |
+| Closed set (explored) | Blue tint           |
+| Current node          | Bright amber        |
+| Final path            | Orange highlight    |
+| Wall                  | Gray `#` glyphs     |
+| Start                 | Blue `@` with glow  |
+| Goal                  | Green `★` with glow |
 
 ### Tooltip
 
