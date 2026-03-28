@@ -1,38 +1,7 @@
 import type { Map as GameMap } from '../map/types.js';
 import type { Direction } from '../movement/directions.js';
 import { CARDINAL_DIRECTIONS, ALL_DIRECTIONS } from '../movement/directions.js';
-
-/**
- * A node in the pathfinding graph
- */
-export interface PathNode {
-  x: number;
-  y: number;
-}
-
-/**
- * Options for pathfinding
- */
-export interface PathfindingOptions {
-  /** Maximum nodes to explore before giving up (default: 1000) */
-  maxNodes?: number;
-  /** Whether to allow diagonal movement (default: false) */
-  allowDiagonal?: boolean;
-  /** Additional blocking check (e.g., for entities) */
-  isBlocked?: (x: number, y: number) => boolean;
-}
-
-/**
- * Result of a pathfinding operation
- */
-export interface PathResult {
-  /** Path from start to goal (excluding start, including goal) */
-  path: PathNode[];
-  /** Whether a path was found */
-  found: boolean;
-  /** Number of nodes explored */
-  nodesExplored: number;
-}
+import type { PathNode, PathfindingOptions, PathResult } from './types.js';
 
 /**
  * Internal node for A* with scoring

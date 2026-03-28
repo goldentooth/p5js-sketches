@@ -1,9 +1,11 @@
 /**
  * Pathfinding module
  *
- * Provides A* pathfinding and related utilities for grid-based movement.
+ * Provides multiple pathfinding algorithms and a generator-based stepper API
+ * for step-by-step visualization.
  *
  * @module pathfinding
  */
 
+export * from './types.js';
 export * from './astar.js';
