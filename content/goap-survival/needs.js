@@ -1,0 +1,230 @@
+// needs.js — NeedDecaySystem, GoalSelectionSystem, foresight logic
+//
+// Needs: hunger, warmth, health (0-100). Agent dies when any hits 0.
+// Goal selection uses utility scoring. Foresight toggle changes behavior.
+
+var foresightMode = true; // true = proactive, false = reactive
+
+// ─── NeedDecaySystem ───────────────────────────────────────────────────────
+
+var NeedDecaySystem = class {
+  constructor() {
+    this.phase = "early";
+  }
+
+  run(world) {
+    var clock = world.getResource("GameClock");
+    if (clock && clock.paused) return;
+
+    var tick = clock ? clock.tick : 0;
+    var nightTime = isNight(tick);
+
+    for (var entity of world.query(["Needs", "Position"])) {
+      var needs = world.getComponent(entity, "Needs");
+      if (!needs) continue;
+
+      // Hunger decays at constant rate
+      needs.hunger = Math.max(0, needs.hunger - 1);
+
+      // Warmth decays faster at night
+      var warmthDecay = nightTime ? 2 : 0.5;
+      needs.warmth = Math.max(0, needs.warmth - warmthDecay);
+
+      // Health doesn't decay naturally (only from attacks)
+
+      // Check death
+      if (needs.hunger <= 0 || needs.warmth <= 0 || needs.health <= 0) {
+        world.addComponent(entity, "Dead", { cause: getCauseOfDeath(needs) });
+      }
+    }
+  }
+};
+
+function getCauseOfDeath(needs) {
+  if (needs.hunger <= 0) return "starvation";
+  if (needs.warmth <= 0) return "hypothermia";
+  if (needs.health <= 0) return "killed";
+  return "unknown";
+}
+
+// ─── GoalSelectionSystem ───────────────────────────────────────────────────
+
+var GoalSelectionSystem = class {
+  constructor() {
+    this.phase = "early";
+  }
+
+  run(world) {
+    var clock = world.getResource("GameClock");
+    if (clock && clock.paused) return;
+
+    var tick = clock ? clock.tick : 0;
+
+    for (var entity of world.query(["Needs", "Inventory", "GoapAgent", "Position"])) {
+      var needs = world.getComponent(entity, "Needs");
+      var agent = world.getComponent(entity, "GoapAgent");
+      if (!needs || !agent) continue;
+
+      var best = this.selectGoal(needs, world, entity, tick);
+
+      // If goal changed, trigger replan
+      if (!agent.currentGoal || !goalsEqual(agent.currentGoal, best)) {
+        agent.currentGoal = best;
+        agent.currentPlan = null;
+        agent.planStepIndex = 0;
+        agent.needsReplan = true;
+      }
+    }
+  }
+
+  selectGoal(needs, world, entity, tick) {
+    var candidates = [];
+
+    // Check for visible threats (always highest priority)
+    var worldState = buildWorldState(world, world.getResource("map"), entity, tick);
+    if (worldState.get("threat_visible")) {
+      candidates.push({
+        state: { threat_visible: false },
+        priority: 100,
+        label: "flee",
+      });
+    }
+
+    // Hunger goal
+    if (foresightMode) {
+      // Proactive: trigger when hunger < 50 OR will be critical in 30 ticks
+      var futureHunger = needs.hunger - 30; // 30 ticks * 1 decay/tick
+      if (needs.hunger < 50 || futureHunger < 25) {
+        candidates.push({
+          state: { hunger: 100 },
+          priority: 100 - needs.hunger,
+          label: "eat",
+        });
+      }
+    } else {
+      // Reactive: only when threshold crossed
+      if (needs.hunger < 50) {
+        candidates.push({
+          state: { hunger: 100 },
+          priority: 100 - needs.hunger,
+          label: "eat",
+        });
+      }
+    }
+
+    // Warmth goal
+    if (foresightMode) {
+      var nightTime = isNight(tick);
+      var warmthDecay = nightTime ? 2 : 0.5;
+      var futureWarmth = needs.warmth - (30 * warmthDecay);
+      // Also trigger if night is approaching (within 20 ticks)
+      var cycleTick = tick % CYCLE_LENGTH;
+      var nightApproaching = cycleTick >= 40 && cycleTick < 60;
+
+      if (needs.warmth < 50 || futureWarmth < 25 || (nightApproaching && needs.warmth < 70)) {
+        candidates.push({
+          state: { warmth: 100 },
+          priority: 100 - needs.warmth,
+          label: "warmth",
+        });
+      }
+    } else {
+      if (needs.warmth < 50) {
+        candidates.push({
+          state: { warmth: 100 },
+          priority: 100 - needs.warmth,
+          label: "warmth",
+        });
+      }
+    }
+
+    // Night torch goal
+    if (foresightMode) {
+      var cycleTick2 = tick % CYCLE_LENGTH;
+      var nightSoon = cycleTick2 >= 40;
+      var inv = world.getComponent(
+        entity,
+        "Inventory"
+      );
+      if (nightSoon && inv && !inv.hasTorch) {
+        candidates.push({
+          state: { has_torch: true },
+          priority: 60,
+          label: "craft torch",
+        });
+      }
+    } else {
+      var inv2 = world.getComponent(entity, "Inventory");
+      if (isNight(tick) && inv2 && !inv2.hasTorch) {
+        candidates.push({
+          state: { has_torch: true },
+          priority: 60,
+          label: "craft torch",
+        });
+      }
+    }
+
+    // Default proactive preparation goal
+    if (candidates.length === 0) {
+      var inv3 = world.getComponent(entity, "Inventory");
+      if (inv3 && !inv3.hasAxe) {
+        candidates.push({
+          state: { has_axe: true },
+          priority: 20,
+          label: "craft axe",
+        });
+      } else {
+        // Gather wood for future fires
+        candidates.push({
+          state: { wood_count: 4 },
+          priority: 20,
+          label: "gather wood",
+        });
+      }
+    }
+
+    // Pick highest priority
+    candidates.sort(function (a, b) { return b.priority - a.priority; });
+    var chosen = candidates[0];
+
+    var goal = Nuglib.createGoal({
+      state: chosen.state,
+      priority: chosen.priority,
+    });
+    setGoalLabel(goal, chosen.label);
+    return goal;
+  }
+};
+
+function goalsEqual(a, b) {
+  if (!a || !b) return false;
+  if (a.state.size !== b.state.size) return false;
+  for (var entry of a.state) {
+    if (b.state.get(entry[0]) !== entry[1]) return false;
+  }
+  return true;
+}
+
+// ─── Goal Label (for display) ──────────────────────────────────────────────
+// The label is stored alongside the goal for the plan inspector.
+// We use a parallel map since GoapGoal doesn't have a label field.
+
+var goalLabels = new Map();
+
+function setGoalLabel(goal, label) {
+  // Use state key as identifier
+  var key = "";
+  for (var entry of goal.state) {
+    key += entry[0] + "=" + entry[1] + ";";
+  }
+  goalLabels.set(key, label);
+}
+
+function getGoalLabel(goal) {
+  if (!goal) return "none";
+  var key = "";
+  for (var entry of goal.state) {
+    key += entry[0] + "=" + entry[1] + ";";
+  }
+  return goalLabels.get(key) || "unknown";
+}
