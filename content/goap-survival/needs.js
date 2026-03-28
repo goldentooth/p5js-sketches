@@ -185,6 +185,30 @@ var GoalSelectionSystem = class {
       }
     }
 
+    // Shelter goal (only if no shelter exists yet)
+    if (!shelterExistsOnMap()) {
+      if (foresightMode) {
+        // Proactive: build shelter before night
+        var cycleTick3 = tick % CYCLE_LENGTH;
+        if (cycleTick3 >= 30) {
+          candidates.push({
+            state: { near_shelter: true },
+            priority: 45,
+            label: "shelter",
+          });
+        }
+      } else {
+        // Reactive: build when warmth is getting low
+        if (needs.warmth < 40) {
+          candidates.push({
+            state: { near_shelter: true },
+            priority: 45,
+            label: "shelter",
+          });
+        }
+      }
+    }
+
     // Default proactive preparation goal
     if (candidates.length === 0) {
       var inv3 = world.getComponent(entity, "Inventory");
