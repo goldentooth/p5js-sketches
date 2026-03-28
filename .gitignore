@@ -27,3 +27,7 @@ Thumbs.db
 *~
 .hugo_build.lock
 coverage/
+
+# Playwright
+test-results/
+playwright-report/
