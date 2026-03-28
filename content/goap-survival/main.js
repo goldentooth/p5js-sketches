@@ -126,11 +126,6 @@ var PlanExecutionSystem = class {
 
       var done = this.executeAction(world, entity, currentAction, pos, needs, inventory, gameMap, tick);
 
-      if (!done && currentAction.name.startsWith("move_to_")) {
-        var energy = world.getComponent(entity, "Energy");
-        console.log("move_to:", currentAction.name, "pos:", pos.x, pos.y, "→", this.moveTarget ? this.moveTarget.x + "," + this.moveTarget.y : "null", "energy:", energy ? energy.current : "?");
-      }
-
       if (done) {
         agent.planStepIndex++;
         this.moveTarget = null;
