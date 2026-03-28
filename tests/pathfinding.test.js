@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMap, findPath, findPathStepped, getStepToward, distance, isAdjacent, findPathDijkstra, findPathDijkstraStepped, findPathGreedy, findPathGreedyStepped, findPathBFS, findPathBFSStepped, Tiles } from '../src';
+import { createMap, findPath, findPathStepped, getStepToward, distance, isAdjacent, findPathDijkstra, findPathDijkstraStepped, findPathGreedy, findPathGreedyStepped, findPathBFS, findPathBFSStepped, findPathJPS, findPathJPSStepped, Tiles } from '../src';
 
 describe('Pathfinding', () => {
   describe('findPath', () => {
@@ -473,6 +473,64 @@ describe('Pathfinding', () => {
       for (let i = 1; i < depths.length; i++) {
         expect(depths[i]).toBeGreaterThanOrEqual(depths[i - 1]);
       }
+    });
+  });
+
+  describe('JPS', () => {
+    let map;
+
+    beforeEach(() => {
+      map = createMap(10, 10, { edgeBehavior: 'block' });
+      for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+          map.setTile(x, y, Tiles.Floor);
+        }
+      }
+    });
+
+    it('should find optimal path on open map', () => {
+      const result = findPathJPS(map, 0, 0, 8, 0);
+      expect(result.found).toBe(true);
+      expect(result.path.length).toBe(8);
+    });
+
+    it('should find same-length path as A*', () => {
+      map.setTile(3, 0, Tiles.Wall);
+      map.setTile(3, 1, Tiles.Wall);
+      map.setTile(3, 2, Tiles.Wall);
+      const jpsResult = findPathJPS(map, 0, 0, 6, 0);
+      const astarResult = findPath(map, 0, 0, 6, 0);
+      expect(jpsResult.found).toBe(true);
+      expect(jpsResult.path.length).toBe(astarResult.path.length);
+    });
+
+    it('should explore fewer nodes than A* on open map', () => {
+      const jpsResult = findPathJPS(map, 0, 0, 8, 0);
+      const astarResult = findPath(map, 0, 0, 8, 0);
+      expect(jpsResult.nodesExplored).toBeLessThanOrEqual(astarResult.nodesExplored);
+    });
+
+    it('should return no path when completely blocked', () => {
+      for (let y = 0; y < 10; y++) map.setTile(5, y, Tiles.Wall);
+      const result = findPathJPS(map, 0, 0, 9, 0);
+      expect(result.found).toBe(false);
+    });
+
+    it('should find path around obstacles', () => {
+      map.setTile(2, 0, Tiles.Wall);
+      map.setTile(2, 1, Tiles.Wall);
+      map.setTile(2, 2, Tiles.Wall);
+      const result = findPathJPS(map, 0, 0, 4, 0);
+      expect(result.found).toBe(true);
+    });
+
+    it('stepper should yield StepState with jump points', () => {
+      const gen = findPathJPSStepped(map, 0, 0, 8, 0);
+      const first = gen.next();
+      expect(first.done).toBe(false);
+      expect(first.value.current).toBeDefined();
+      expect(first.value.openSet).toBeDefined();
+      expect(first.value.closedSet).toBeDefined();
     });
   });
 });

@@ -12,3 +12,4 @@ export * from './astar.js';
 export * from './dijkstra.js';
 export * from './greedyBestFirst.js';
 export * from './bfs.js';
+export * from './jps.js';
