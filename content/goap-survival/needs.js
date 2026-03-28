@@ -26,8 +26,20 @@ var NeedDecaySystem = class {
       // Hunger decays at constant rate
       needs.hunger = Math.max(0, needs.hunger - 1);
 
-      // Warmth decays faster at night
+      // Warmth decays faster at night; shelter halves decay
       var warmthDecay = nightTime ? 2 : 0.5;
+      var pos = world.getComponent(entity, "Position");
+      if (pos) {
+        for (var sdy = -1; sdy <= 1; sdy++) {
+          for (var sdx = -1; sdx <= 1; sdx++) {
+            if (sdx === 0 && sdy === 0) continue;
+            if (getFeatureAt(pos.x + sdx, pos.y + sdy) === FEATURE_SHELTER) {
+              warmthDecay *= 0.5;
+              sdy = 2; sdx = 2; // break both loops
+            }
+          }
+        }
+      }
       needs.warmth = Math.max(0, needs.warmth - warmthDecay);
 
       // Health doesn't decay naturally (only from attacks)
@@ -67,8 +79,17 @@ var GoalSelectionSystem = class {
 
       var best = this.selectGoal(needs, world, entity, tick);
 
-      // If goal changed, trigger replan
-      if (!agent.currentGoal || !goalsEqual(agent.currentGoal, best)) {
+      // Goal hysteresis: if executing a plan, require significant priority
+      // jump to switch goals (prevents oscillation on minor need fluctuations)
+      var shouldSwitch = true;
+      if (agent.currentGoal && agent.currentPlan &&
+          agent.planStepIndex < agent.currentPlan.actions.length) {
+        if (best.priority <= agent.currentGoal.priority + 15) {
+          shouldSwitch = false;
+        }
+      }
+
+      if (shouldSwitch && (!agent.currentGoal || !goalsEqual(agent.currentGoal, best))) {
         agent.currentGoal = best;
         agent.currentPlan = null;
         agent.planStepIndex = 0;
@@ -161,6 +182,30 @@ var GoalSelectionSystem = class {
           priority: 60,
           label: "craft torch",
         });
+      }
+    }
+
+    // Shelter goal (only if no shelter exists yet)
+    if (!shelterExistsOnMap()) {
+      if (foresightMode) {
+        // Proactive: build shelter before night
+        var cycleTick3 = tick % CYCLE_LENGTH;
+        if (cycleTick3 >= 30) {
+          candidates.push({
+            state: { near_shelter: true },
+            priority: 45,
+            label: "shelter",
+          });
+        }
+      } else {
+        // Reactive: build when warmth is getting low
+        if (needs.warmth < 40) {
+          candidates.push({
+            state: { near_shelter: true },
+            priority: 45,
+            label: "shelter",
+          });
+        }
       }
     }
 

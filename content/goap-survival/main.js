@@ -39,27 +39,10 @@ var GoapPlanningSystem = class {
       var pos = world.getComponent(entity, "Position");
       if (!agent || !pos) continue;
 
-      // Check if we need to plan
-      var shouldPlan = false;
-
+      // Plan commitment: only replan when goal changes (needsReplan) or
+      // no plan exists. Do NOT revalidate per-tick — that causes oscillation
+      // when dynamic move_to costs shift with agent position.
       if (!agent.currentPlan || agent.needsReplan) {
-        shouldPlan = true;
-      } else if (agent.planStepIndex >= agent.currentPlan.actions.length) {
-        // Plan complete -- goal selection will pick a new goal next tick
-        shouldPlan = false;
-      } else {
-        // Validate remaining plan steps (skip already-completed ones)
-        var ws = buildWorldState(world, gameMap, entity, tick);
-        var remaining = {
-          actions: agent.currentPlan.actions.slice(agent.planStepIndex),
-          goal: agent.currentPlan.goal,
-        };
-        if (!Nuglib.validatePlan(agent.planner, ws, remaining)) {
-          shouldPlan = true;
-        }
-      }
-
-      if (shouldPlan) {
         this.makePlan(world, entity, agent, gameMap, tick);
       }
     }
@@ -89,10 +72,10 @@ var GoapPlanningSystem = class {
 var PlanExecutionSystem = class {
   constructor() {
     this.phase = "early";
-    this.moveTarget = null; // { x, y } for feature location
-    this.pathGoal = null;   // { x, y } for walkable pathfinding destination
-    this.lastPlan = null;   // track plan identity to clear stale moveTarget
-    this.lastStepIndex = -1;
+    this.moveTarget = null;
+    this.pathGoal = null;
+    this._lastPlan = null;
+    this._lastStepIndex = -1;
   }
 
   run(world) {
@@ -110,12 +93,12 @@ var PlanExecutionSystem = class {
       if (!agent || !agent.currentPlan) continue;
       if (agent.planStepIndex >= agent.currentPlan.actions.length) continue;
 
-      // Clear stale moveTarget when plan or step changes (e.g. after replanning)
-      if (agent.currentPlan !== this.lastPlan || agent.planStepIndex !== this.lastStepIndex) {
+      // Clear pathfinding state when plan or step changes
+      if (agent.currentPlan !== this._lastPlan || agent.planStepIndex !== this._lastStepIndex) {
         this.moveTarget = null;
         this.pathGoal = null;
-        this.lastPlan = agent.currentPlan;
-        this.lastStepIndex = agent.planStepIndex;
+        this._lastPlan = agent.currentPlan;
+        this._lastStepIndex = agent.planStepIndex;
       }
 
       var currentAction = agent.currentPlan.actions[agent.planStepIndex];
@@ -130,7 +113,6 @@ var PlanExecutionSystem = class {
         agent.planStepIndex++;
         this.moveTarget = null;
         this.pathGoal = null;
-        this.lastStepIndex = agent.planStepIndex;
       }
     }
   }
@@ -191,6 +173,41 @@ var PlanExecutionSystem = class {
       case "flee":
         return this.executeFlee(world, entity, pos, gameMap);
 
+      case "build_shelter":
+        return this.executeBuildShelter(world, entity, pos, inventory, gameMap);
+
+      case "warm_at_shelter":
+        needs.warmth = Math.min(100, needs.warmth + 20);
+        return true;
+
+      case "craft_fishing_pole":
+        if (inventory.sticks >= 2 && inventory.stones >= 1) {
+          inventory.sticks -= 2;
+          inventory.stones--;
+          inventory.hasFishingPole = true;
+        }
+        return true;
+
+      case "catch_fish":
+        return this.executeCatchFish(world, entity, pos, inventory);
+
+      case "cook_fish":
+        return this.executeCookFish(world, entity, pos, inventory);
+
+      case "eat_raw_fish":
+        if (inventory.hasRawFish) {
+          inventory.hasRawFish = false;
+          needs.hunger = Math.min(100, needs.hunger + 15);
+        }
+        return true;
+
+      case "eat_cooked_fish":
+        if (inventory.hasCookedFish) {
+          inventory.hasCookedFish = false;
+          needs.hunger = Math.min(100, needs.hunger + 60);
+        }
+        return true;
+
       default:
         return true; // unknown action, skip
     }
@@ -200,31 +217,39 @@ var PlanExecutionSystem = class {
     var targetType = name.replace("move_to_", "");
     var featureType = FEATURE_NONE;
     var wantClear = false;
+    var wantWater = false;
 
     if (targetType === "tree") featureType = FEATURE_TREE;
     else if (targetType === "rock") featureType = FEATURE_ROCK;
     else if (targetType === "berries") featureType = FEATURE_BERRY;
     else if (targetType === "sticks") featureType = FEATURE_STICKS;
     else if (targetType === "fire") featureType = FEATURE_FIRE;
+    else if (targetType === "shelter") featureType = FEATURE_SHELTER;
     else if (targetType === "clear") wantClear = true;
+    else if (targetType === "water") wantWater = true;
 
-    // Find nearest target if we don't have one or reached the old one
+    // Find nearest target if we don't have one
     if (!this.moveTarget) {
-      var nearest = findNearestFeaturePosition(gameMap, pos.x, pos.y, featureType, wantClear);
+      var nearest;
+      if (wantWater) {
+        nearest = findNearestTerrain(gameMap, pos.x, pos.y, TERRAIN_WATER);
+      } else {
+        nearest = findNearestFeaturePosition(gameMap, pos.x, pos.y, featureType, wantClear);
+      }
       if (!nearest) return true; // can't find target, skip
       this.moveTarget = nearest;
 
-      // For blocked targets (rocks etc.), find a walkable neighbor to pathfind to
+      // If target tile is blocked (rocks, water), path to a walkable neighbor
       if (gameMap.blocksMovement(nearest.x, nearest.y)) {
         var neighbor = this.findWalkableNeighbor(gameMap, nearest.x, nearest.y);
-        if (!neighbor) return true; // completely surrounded, skip
+        if (!neighbor) return true;
         this.pathGoal = neighbor;
       } else {
         this.pathGoal = nearest;
       }
     }
 
-    // Check if adjacent to the feature target
+    // Check if adjacent to the target (for blocked features: rocks, water)
     if (Nuglib.isAdjacent(pos.x, pos.y, this.moveTarget.x, this.moveTarget.y)) {
       return true; // arrived adjacent
     }
@@ -234,16 +259,29 @@ var PlanExecutionSystem = class {
       return true; // arrived
     }
 
-    // Pathfind one step toward pathGoal (which is always a walkable tile)
-    var dir = Nuglib.getStepToward(gameMap, pos.x, pos.y, this.pathGoal.x, this.pathGoal.y, { allowDiagonal: true });
+    // Pathfind one step toward goal (walkable neighbor if target is blocked)
+    var goal = this.pathGoal || this.moveTarget;
+    var dir = Nuglib.getStepToward(gameMap, pos.x, pos.y, goal.x, goal.y, { allowDiagonal: true });
     if (dir) {
       this.queueMove(world, entity, dir);
     } else {
-      // Can't reach, give up on this action
-      return true;
+      return true; // can't reach, give up
     }
 
     return false; // not done yet, still moving
+  }
+
+  findWalkableNeighbor(gameMap, x, y) {
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var nx = x + dx;
+        var ny = y + dy;
+        if (nx < 0 || nx >= MAP_COLS || ny < 0 || ny >= MAP_ROWS) continue;
+        if (!gameMap.blocksMovement(nx, ny)) return { x: nx, y: ny };
+      }
+    }
+    return null;
   }
 
   executeGather(world, entity, pos, inventory, featureType, inventoryKey, amount) {
@@ -335,6 +373,80 @@ var PlanExecutionSystem = class {
           energyCost: 100,
         });
         return true;
+      }
+    }
+    return true;
+  }
+
+  executeBuildShelter(world, entity, pos, inventory, gameMap) {
+    if (inventory.wood < 4 || inventory.sticks < 2) return true;
+
+    // Find adjacent clear grass tile
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var nx = pos.x + dx;
+        var ny = pos.y + dy;
+        if (nx < 0 || nx >= MAP_COLS || ny < 0 || ny >= MAP_ROWS) continue;
+        if (gameMap.blocksMovement(nx, ny)) continue;
+        if (getFeatureAt(nx, ny) !== FEATURE_NONE) continue;
+        if (getTerrainAt(nx, ny) !== TERRAIN_GRASS) continue;
+
+        inventory.wood -= 4;
+        inventory.sticks -= 2;
+        setFeatureAt(nx, ny, FEATURE_SHELTER);
+        world.addComponent(entity, "Action", {
+          type: "wait",
+          energyCost: 150,
+        });
+        return true;
+      }
+    }
+    return true;
+  }
+
+  executeCatchFish(world, entity, pos, inventory) {
+    if (!inventory.hasFishingPole) return true;
+
+    // Check adjacent tiles for water terrain
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var nx = pos.x + dx;
+        var ny = pos.y + dy;
+        if (nx < 0 || nx >= MAP_COLS || ny < 0 || ny >= MAP_ROWS) continue;
+        if (getTerrainAt(nx, ny) === TERRAIN_WATER) {
+          inventory.hasRawFish = true;
+          world.addComponent(entity, "Action", {
+            type: "wait",
+            energyCost: 100,
+          });
+          return true;
+        }
+      }
+    }
+    return true;
+  }
+
+  executeCookFish(world, entity, pos, inventory) {
+    if (!inventory.hasRawFish) return true;
+
+    // Check adjacent tiles for fire
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var nx = pos.x + dx;
+        var ny = pos.y + dy;
+        if (nx < 0 || nx >= MAP_COLS || ny < 0 || ny >= MAP_ROWS) continue;
+        if (getFeatureAt(nx, ny) === FEATURE_FIRE) {
+          inventory.hasCookedFish = true;
+          inventory.hasRawFish = false;
+          world.addComponent(entity, "Action", {
+            type: "wait",
+            energyCost: 50,
+          });
+          return true;
+        }
       }
     }
     return true;
@@ -464,6 +576,12 @@ var MonsterAISystem = class {
                 if (blockedPositions.has(x + "," + y)) return true;
                 // Avoid lit tiles
                 if (getLightAt(x, y) > 0.5) return true;
+                // Shelter safe zone: avoid tiles adjacent to shelter
+                for (var sdy = -1; sdy <= 1; sdy++) {
+                  for (var sdx = -1; sdx <= 1; sdx++) {
+                    if (getFeatureAt(x + sdx, y + sdy) === FEATURE_SHELTER) return true;
+                  }
+                }
                 return false;
               },
             }
@@ -495,6 +613,11 @@ var MonsterAISystem = class {
           if (x === pos.x && y === pos.y) return false;
           if (blockedPositions.has(x + "," + y)) return true;
           if (getLightAt(x, y) > 0.5) return true;
+          for (var sdy = -1; sdy <= 1; sdy++) {
+            for (var sdx = -1; sdx <= 1; sdx++) {
+              if (getFeatureAt(x + sdx, y + sdy) === FEATURE_SHELTER) return true;
+            }
+          }
           return false;
         },
       }
@@ -749,6 +872,9 @@ function regenerateWorld() {
     hasAxe: false,
     hasTorch: false,
     hasFood: false,
+    hasFishingPole: false,
+    hasRawFish: false,
+    hasCookedFish: false,
   });
 
   // Initialize GOAP agent
