@@ -16,7 +16,7 @@ var FISHBOWL_TEMPLATES = {
     glyph: "g",
     fg: [74, 222, 128],   // green
     maxHp: 5,
-    attack: 2,
+    attack: 3,
     defense: 0,
     speed: 1.0,
     fovRange: 8,
