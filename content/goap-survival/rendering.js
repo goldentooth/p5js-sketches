@@ -23,7 +23,6 @@ var GOAL_COLORS = {
   "craft torch": [100, 200, 100], // green
   "gather wood": [100, 200, 100], // green
   shelter: [180, 140, 100],           // tan
-  "craft fishing pole": [100, 200, 100], // green
   none: [255, 255, 255],    // white
 };
 

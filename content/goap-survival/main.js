@@ -414,6 +414,7 @@ var PlanExecutionSystem = class {
         if (dx === 0 && dy === 0) continue;
         var nx = pos.x + dx;
         var ny = pos.y + dy;
+        if (nx < 0 || nx >= MAP_COLS || ny < 0 || ny >= MAP_ROWS) continue;
         if (getTerrainAt(nx, ny) === TERRAIN_WATER) {
           inventory.hasRawFish = true;
           world.addComponent(entity, "Action", {
@@ -436,6 +437,7 @@ var PlanExecutionSystem = class {
         if (dx === 0 && dy === 0) continue;
         var nx = pos.x + dx;
         var ny = pos.y + dy;
+        if (nx < 0 || nx >= MAP_COLS || ny < 0 || ny >= MAP_ROWS) continue;
         if (getFeatureAt(nx, ny) === FEATURE_FIRE) {
           inventory.hasCookedFish = true;
           inventory.hasRawFish = false;
