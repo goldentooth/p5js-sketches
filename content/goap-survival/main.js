@@ -725,6 +725,9 @@ function regenerateWorld() {
     hasAxe: false,
     hasTorch: false,
     hasFood: false,
+    hasFishingPole: false,
+    hasRawFish: false,
+    hasCookedFish: false,
   });
 
   // Initialize GOAP agent

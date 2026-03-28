@@ -19,6 +19,7 @@ function buildWorldState(world, map, agentEntity, tick) {
   var nearFire = false;
   var nearClear = false;
   var nearWater = false;
+  var nearShelter = false;
 
   for (var dy = -1; dy <= 1; dy++) {
     for (var dx = -1; dx <= 1; dx++) {
@@ -35,6 +36,7 @@ function buildWorldState(world, map, agentEntity, tick) {
       if (feat === FEATURE_BERRY) nearBerries = true;
       if (feat === FEATURE_STICKS) nearSticks = true;
       if (feat === FEATURE_FIRE) nearFire = true;
+      if (feat === FEATURE_SHELTER) nearShelter = true;
       if (terr === TERRAIN_WATER) nearWater = true;
 
       // near_clear: walkable grass with no feature
@@ -83,6 +85,10 @@ function buildWorldState(world, map, agentEntity, tick) {
     near_fire: nearFire,
     near_clear: nearClear,
     near_water: nearWater,
+    near_shelter: nearShelter,
+    has_fishing_pole: inventory.hasFishingPole,
+    has_raw_fish: inventory.hasRawFish,
+    has_cooked_fish: inventory.hasCookedFish,
     is_night: isNight(tick),
     threat_visible: threatVisible,
   });
