@@ -5,7 +5,7 @@ import { dirname, join } from "path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const htmlPath = join(__dirname, "headless-test.html");
 
-const NUM_TRIALS = 100;
+const NUM_TRIALS = 200;
 const MAX_TICKS = 500; // ~4 full day/night cycles
 
 async function main() {

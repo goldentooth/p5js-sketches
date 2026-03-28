@@ -22,12 +22,12 @@ var SURVIVAL_ACTIONS = [
     name: "gather_berries",
     preconditions: { near_berries: true },
     effects: { has_food: true },
-    cost: 1,
+    cost: 3,
   },
   {
     name: "eat_food",
     preconditions: { has_food: true },
-    effects: { hunger: 30, has_food: false },
+    effects: { hunger: 40, has_food: false },
     cost: 1,
   },
   {
@@ -93,7 +93,7 @@ var SURVIVAL_ACTIONS = [
   {
     name: "eat_raw_fish",
     preconditions: { has_raw_fish: true },
-    effects: { hunger: 15, has_raw_fish: false },
+    effects: { hunger: 25, has_raw_fish: false },
     cost: 1,
   },
   {
@@ -124,6 +124,9 @@ var MOVE_TARGETS = [
   { target: "shelter", feature: FEATURE_SHELTER, stateKey: "near_shelter" },
 ];
 
+var MOVE_SEARCH_RADIUS = 20;
+var TERRAIN_SEARCH_RADIUS = 40; // larger for terrain (water) — always exists but can be far
+
 function buildMoveToActions(map, agentX, agentY) {
   var moveActions = [];
 
@@ -131,9 +134,9 @@ function buildMoveToActions(map, agentX, agentY) {
     var mt = MOVE_TARGETS[i];
     var nearest;
     if (mt.terrain !== undefined) {
-      nearest = findNearestTerrain(map, agentX, agentY, mt.terrain);
+      nearest = findNearestTerrain(map, agentX, agentY, mt.terrain, TERRAIN_SEARCH_RADIUS);
     } else {
-      nearest = findNearestFeature(map, agentX, agentY, mt.feature, mt.target === "clear");
+      nearest = findNearestFeature(map, agentX, agentY, mt.feature, mt.target === "clear", MOVE_SEARCH_RADIUS);
     }
     if (!nearest) continue;
 
@@ -155,7 +158,7 @@ function buildMoveToActions(map, agentX, agentY) {
   return moveActions;
 }
 
-function findNearestTerrain(map, ax, ay, terrainType) {
+function findNearestTerrain(map, ax, ay, terrainType, maxRadius) {
   var best = null;
   var bestDist = Infinity;
 
@@ -164,6 +167,7 @@ function findNearestTerrain(map, ax, ay, terrainType) {
       if (getTerrainAt(x, y) !== terrainType) continue;
 
       var dist = Math.abs(x - ax) + Math.abs(y - ay);
+      if (maxRadius && dist > maxRadius) continue;
       if (dist < bestDist) {
         bestDist = dist;
         best = { x: x, y: y };
@@ -174,7 +178,7 @@ function findNearestTerrain(map, ax, ay, terrainType) {
   return best;
 }
 
-function findNearestFeature(map, ax, ay, featureType, wantClear) {
+function findNearestFeature(map, ax, ay, featureType, wantClear, maxRadius) {
   var best = null;
   var bestDist = Infinity;
 
@@ -190,6 +194,7 @@ function findNearestFeature(map, ax, ay, featureType, wantClear) {
       }
 
       var dist = Math.abs(x - ax) + Math.abs(y - ay);
+      if (maxRadius && dist > maxRadius) continue;
       if (dist < bestDist) {
         bestDist = dist;
         best = { x: x, y: y };

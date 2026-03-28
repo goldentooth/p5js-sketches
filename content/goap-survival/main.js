@@ -143,7 +143,7 @@ var PlanExecutionSystem = class {
       case "eat_food":
         if (inventory.hasFood) {
           inventory.hasFood = false;
-          needs.hunger = Math.min(100, needs.hunger + 30);
+          needs.hunger = Math.min(100, needs.hunger + 40);
           return true;
         }
         return true; // skip if no food (plan invalidated)
@@ -201,7 +201,7 @@ var PlanExecutionSystem = class {
       case "eat_raw_fish":
         if (inventory.hasRawFish) {
           inventory.hasRawFish = false;
-          needs.hunger = Math.min(100, needs.hunger + 15);
+          needs.hunger = Math.min(100, needs.hunger + 25);
         }
         return true;
 
@@ -314,7 +314,9 @@ var PlanExecutionSystem = class {
         }
       }
     }
-    return true; // no adjacent feature, skip
+    // No adjacent feature found — replan
+    this.triggerReplan(world, entity);
+    return true;
   }
 
   executeGatherBerries(world, entity, pos, inventory) {
@@ -334,6 +336,8 @@ var PlanExecutionSystem = class {
         }
       }
     }
+    // No berries found adjacent — replan to find food elsewhere
+    this.triggerReplan(world, entity);
     return true;
   }
 
@@ -427,7 +431,7 @@ var PlanExecutionSystem = class {
           inventory.hasRawFish = true;
           world.addComponent(entity, "Action", {
             type: "wait",
-            energyCost: 100,
+            energyCost: 50,
           });
           return true;
         }
@@ -854,7 +858,7 @@ function regenerateWorld() {
   world.addComponent(agentEntity, "Inventory", {
     sticks: 4,
     stones: 2,
-    wood: 2,
+    wood: 4,
     hasAxe: false,
     hasTorch: false,
     hasFood: true,

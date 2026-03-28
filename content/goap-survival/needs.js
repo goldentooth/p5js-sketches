@@ -26,20 +26,26 @@ var NeedDecaySystem = class {
       // Hunger decays at constant rate (0.5/tick)
       needs.hunger = Math.max(0, needs.hunger - 0.5);
 
-      // Warmth decays faster at night; shelter halves decay
+      // Warmth decays faster at night; shelter/fire/torch reduce decay
       var warmthDecay = nightTime ? 1.5 : 0.5;
       var pos = world.getComponent(entity, "Position");
       if (pos) {
+        var nearShelterOrFire = false;
         for (var sdy = -1; sdy <= 1; sdy++) {
           for (var sdx = -1; sdx <= 1; sdx++) {
             if (sdx === 0 && sdy === 0) continue;
-            if (getFeatureAt(pos.x + sdx, pos.y + sdy) === FEATURE_SHELTER) {
-              warmthDecay *= 0.5;
+            var feat = getFeatureAt(pos.x + sdx, pos.y + sdy);
+            if (feat === FEATURE_SHELTER || feat === FEATURE_FIRE) {
+              nearShelterOrFire = true;
               sdy = 2; sdx = 2; // break both loops
             }
           }
         }
+        if (nearShelterOrFire) warmthDecay *= 0.5;
       }
+      // Torch provides warmth while traveling
+      var inv = world.getComponent(entity, "Inventory");
+      if (inv && inv.hasTorch) warmthDecay *= 0.7;
       needs.warmth = Math.max(0, needs.warmth - warmthDecay);
 
       // Health doesn't decay naturally (only from attacks)
@@ -116,9 +122,9 @@ var GoalSelectionSystem = class {
 
     // Hunger goal
     if (foresightMode) {
-      // Proactive: trigger when hunger < 50 OR will be critical in 30 ticks
-      var futureHunger = needs.hunger - 15; // 30 ticks * 0.5 decay/tick
-      if (needs.hunger < 50 || futureHunger < 25) {
+      // Proactive: trigger when hunger < 60 OR will be critical in 40 ticks
+      var futureHunger = needs.hunger - 20; // 40 ticks * 0.5 decay/tick
+      if (needs.hunger < 60 || futureHunger < 25) {
         candidates.push({
           state: { hunger: 100 },
           priority: 100 - needs.hunger,
@@ -141,9 +147,9 @@ var GoalSelectionSystem = class {
       var nightTime = isNight(tick);
       var warmthDecay = nightTime ? 1.5 : 0.5;
       var futureWarmth = needs.warmth - (30 * warmthDecay);
-      // Also trigger if night is approaching (within 20 ticks)
+      // Also trigger if night is approaching (within 30 ticks)
       var cycleTick = tick % CYCLE_LENGTH;
-      var nightApproaching = cycleTick >= 40 && cycleTick < 60;
+      var nightApproaching = cycleTick >= 30 && cycleTick < 60;
 
       if (needs.warmth < 50 || futureWarmth < 25 || (nightApproaching && needs.warmth < 70)) {
         // Warmth priority boosted at night since decay is 4x faster
@@ -165,10 +171,10 @@ var GoalSelectionSystem = class {
       }
     }
 
-    // Night torch goal
+    // Night torch goal — craft early so torch warmth bonus is available
     if (foresightMode) {
       var cycleTick2 = tick % CYCLE_LENGTH;
-      var nightSoon = cycleTick2 >= 40;
+      var nightSoon = cycleTick2 >= 20;
       var inv = world.getComponent(
         entity,
         "Inventory"
@@ -176,7 +182,7 @@ var GoalSelectionSystem = class {
       if (nightSoon && inv && !inv.hasTorch) {
         candidates.push({
           state: { has_torch: true },
-          priority: 60,
+          priority: 65,
           label: "craft torch",
         });
       }
