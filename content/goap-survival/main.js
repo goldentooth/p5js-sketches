@@ -124,6 +124,11 @@ var PlanExecutionSystem = class {
 
       var done = this.executeAction(world, entity, currentAction, pos, needs, inventory, gameMap, tick);
 
+      if (!done && currentAction.name.startsWith("move_to_")) {
+        var energy = world.getComponent(entity, "Energy");
+        console.log("move_to:", currentAction.name, "pos:", pos.x, pos.y, "→", this.moveTarget ? this.moveTarget.x + "," + this.moveTarget.y : "null", "energy:", energy ? energy.current : "?");
+      }
+
       if (done) {
         agent.planStepIndex++;
         this.moveTarget = null;
@@ -222,11 +227,13 @@ var PlanExecutionSystem = class {
       return true; // arrived
     }
 
-    // Pathfind one step toward target
-    var dir = Nuglib.getStepToward(gameMap, pos.x, pos.y, this.moveTarget.x, this.moveTarget.y);
+    // Pathfind one step toward target (diagonal allowed for tight passages)
+    var dir = Nuglib.getStepToward(gameMap, pos.x, pos.y, this.moveTarget.x, this.moveTarget.y, { allowDiagonal: true });
     if (dir) {
       this.queueMove(world, entity, dir);
     } else {
+      console.warn("move_to: no path from", pos.x, pos.y, "to", this.moveTarget.x, this.moveTarget.y,
+        "blocked?", gameMap.blocksMovement(this.moveTarget.x, this.moveTarget.y));
       // Can't reach, give up on this action
       return true;
     }
