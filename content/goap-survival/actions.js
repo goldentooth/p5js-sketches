@@ -57,7 +57,7 @@ var SURVIVAL_ACTIONS = [
   {
     name: "warm_at_fire",
     preconditions: { near_fire: true },
-    effects: { warmth: 40 },
+    effects: { warmth: 50 },
     cost: 1,
   },
   {
@@ -105,7 +105,7 @@ var SURVIVAL_ACTIONS = [
   {
     name: "warm_at_shelter",
     preconditions: { near_shelter: true },
-    effects: { warmth: 20 },
+    effects: { warmth: 50 },
     cost: 1,
   },
 ];

@@ -39,10 +39,13 @@ var GoapPlanningSystem = class {
       var pos = world.getComponent(entity, "Position");
       if (!agent || !pos) continue;
 
-      // Plan commitment: only replan when goal changes (needsReplan) or
-      // no plan exists. Do NOT revalidate per-tick — that causes oscillation
-      // when dynamic move_to costs shift with agent position.
-      if (!agent.currentPlan || agent.needsReplan) {
+      // Plan commitment: only replan when goal changes (needsReplan),
+      // no plan exists, or plan is exhausted (all steps done but goal
+      // not yet satisfied). Do NOT revalidate per-tick — that causes
+      // oscillation when dynamic move_to costs shift with agent position.
+      var planExhausted = agent.currentPlan &&
+          agent.planStepIndex >= agent.currentPlan.actions.length;
+      if (!agent.currentPlan || agent.needsReplan || planExhausted) {
         this.makePlan(world, entity, agent, gameMap, tick);
       }
     }
@@ -86,6 +89,7 @@ var PlanExecutionSystem = class {
     var gameMap = world.getResource("map");
 
     for (var entity of world.query(["GoapAgent", "Position", "Energy", "Needs", "Inventory"])) {
+      // Skip if already has an action queued
       // Skip if already has an action queued
       if (world.getComponent(entity, "Action")) continue;
 
@@ -167,7 +171,7 @@ var PlanExecutionSystem = class {
         return this.executeBuildFire(world, entity, pos, inventory, gameMap);
 
       case "warm_at_fire":
-        needs.warmth = Math.min(100, needs.warmth + 40);
+        needs.warmth = Math.min(100, needs.warmth + 50);
         return true;
 
       case "flee":
@@ -177,7 +181,7 @@ var PlanExecutionSystem = class {
         return this.executeBuildShelter(world, entity, pos, inventory, gameMap);
 
       case "warm_at_shelter":
-        needs.warmth = Math.min(100, needs.warmth + 20);
+        needs.warmth = Math.min(100, needs.warmth + 50);
         return true;
 
       case "craft_fishing_pole":
@@ -236,27 +240,30 @@ var PlanExecutionSystem = class {
       } else {
         nearest = findNearestFeaturePosition(gameMap, pos.x, pos.y, featureType, wantClear);
       }
-      if (!nearest) return true; // can't find target, skip
+      if (!nearest) {
+        this.triggerReplan(world, entity);
+        return true; // can't find target, replan
+      }
       this.moveTarget = nearest;
 
       // If target tile is blocked (rocks, water), path to a walkable neighbor
       if (gameMap.blocksMovement(nearest.x, nearest.y)) {
         var neighbor = this.findWalkableNeighbor(gameMap, nearest.x, nearest.y);
-        if (!neighbor) return true;
+        if (!neighbor) {
+          this.triggerReplan(world, entity);
+          return true;
+        }
         this.pathGoal = neighbor;
       } else {
         this.pathGoal = nearest;
       }
     }
 
-    // Check if adjacent to the target (for blocked features: rocks, water)
-    if (Nuglib.isAdjacent(pos.x, pos.y, this.moveTarget.x, this.moveTarget.y)) {
-      return true; // arrived adjacent
-    }
-
-    // Check if on top of the target (for walkable features)
-    if (pos.x === this.moveTarget.x && pos.y === this.moveTarget.y) {
-      return true; // arrived
+    // Check if on top of or adjacent to the target (8-directional)
+    var tdx = Math.abs(pos.x - this.moveTarget.x);
+    var tdy = Math.abs(pos.y - this.moveTarget.y);
+    if (tdx <= 1 && tdy <= 1) {
+      return true; // arrived (on top or adjacent including diagonals)
     }
 
     // Pathfind one step toward goal (walkable neighbor if target is blocked)
@@ -265,7 +272,8 @@ var PlanExecutionSystem = class {
     if (dir) {
       this.queueMove(world, entity, dir);
     } else {
-      return true; // can't reach, give up
+      this.triggerReplan(world, entity);
+      return true; // can't reach, replan
     }
 
     return false; // not done yet, still moving
@@ -317,7 +325,7 @@ var PlanExecutionSystem = class {
         var ny = pos.y + dy;
         if (getFeatureAt(nx, ny) === FEATURE_BERRY) {
           inventory.hasFood = true;
-          // Berries respawn, don't remove
+          removeFeatureAt(nx, ny);
           world.addComponent(entity, "Action", {
             type: "wait",
             energyCost: 50,
@@ -397,7 +405,7 @@ var PlanExecutionSystem = class {
         setFeatureAt(nx, ny, FEATURE_SHELTER);
         world.addComponent(entity, "Action", {
           type: "wait",
-          energyCost: 150,
+          energyCost: 100,
         });
         return true;
       }
@@ -487,6 +495,11 @@ var PlanExecutionSystem = class {
     }
 
     return true; // no threat or can't move
+  }
+
+  triggerReplan(world, entity) {
+    var agent = world.getComponent(entity, "GoapAgent");
+    if (agent) agent.needsReplan = true;
   }
 
   queueMove(world, entity, direction) {
@@ -839,12 +852,12 @@ function regenerateWorld() {
     health: 100,
   });
   world.addComponent(agentEntity, "Inventory", {
-    sticks: 0,
-    stones: 0,
-    wood: 0,
+    sticks: 4,
+    stones: 2,
+    wood: 2,
     hasAxe: false,
     hasTorch: false,
-    hasFood: false,
+    hasFood: true,
     hasFishingPole: false,
     hasRawFish: false,
     hasCookedFish: false,

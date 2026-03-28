@@ -23,11 +23,11 @@ var NeedDecaySystem = class {
       var needs = world.getComponent(entity, "Needs");
       if (!needs) continue;
 
-      // Hunger decays at constant rate
-      needs.hunger = Math.max(0, needs.hunger - 1);
+      // Hunger decays at constant rate (0.5/tick)
+      needs.hunger = Math.max(0, needs.hunger - 0.5);
 
       // Warmth decays faster at night; shelter halves decay
-      var warmthDecay = nightTime ? 2 : 0.5;
+      var warmthDecay = nightTime ? 1.5 : 0.5;
       var pos = world.getComponent(entity, "Position");
       if (pos) {
         for (var sdy = -1; sdy <= 1; sdy++) {
@@ -80,9 +80,12 @@ var GoalSelectionSystem = class {
       var best = this.selectGoal(needs, world, entity, tick);
 
       // Goal hysteresis: if executing a plan, require significant priority
-      // jump to switch goals (prevents oscillation on minor need fluctuations)
+      // jump to switch goals (prevents oscillation on minor need fluctuations).
+      // Exception: bypass hysteresis when any need is critically low (<15),
+      // since the agent needs to react immediately to survive.
+      var critical = needs.hunger < 15 || needs.warmth < 15;
       var shouldSwitch = true;
-      if (agent.currentGoal && agent.currentPlan &&
+      if (!critical && agent.currentGoal && agent.currentPlan &&
           agent.planStepIndex < agent.currentPlan.actions.length) {
         if (best.priority <= agent.currentGoal.priority + 15) {
           shouldSwitch = false;
@@ -114,7 +117,7 @@ var GoalSelectionSystem = class {
     // Hunger goal
     if (foresightMode) {
       // Proactive: trigger when hunger < 50 OR will be critical in 30 ticks
-      var futureHunger = needs.hunger - 30; // 30 ticks * 1 decay/tick
+      var futureHunger = needs.hunger - 15; // 30 ticks * 0.5 decay/tick
       if (needs.hunger < 50 || futureHunger < 25) {
         candidates.push({
           state: { hunger: 100 },
@@ -136,16 +139,19 @@ var GoalSelectionSystem = class {
     // Warmth goal
     if (foresightMode) {
       var nightTime = isNight(tick);
-      var warmthDecay = nightTime ? 2 : 0.5;
+      var warmthDecay = nightTime ? 1.5 : 0.5;
       var futureWarmth = needs.warmth - (30 * warmthDecay);
       // Also trigger if night is approaching (within 20 ticks)
       var cycleTick = tick % CYCLE_LENGTH;
       var nightApproaching = cycleTick >= 40 && cycleTick < 60;
 
       if (needs.warmth < 50 || futureWarmth < 25 || (nightApproaching && needs.warmth < 70)) {
+        // Warmth priority boosted at night since decay is 4x faster
+        var warmthPriority = 100 - needs.warmth;
+        if (nightTime) warmthPriority = Math.min(100, warmthPriority + 20);
         candidates.push({
           state: { warmth: 100 },
-          priority: 100 - needs.warmth,
+          priority: warmthPriority,
           label: "warmth",
         });
       }
@@ -217,6 +223,12 @@ var GoalSelectionSystem = class {
           state: { has_axe: true },
           priority: 20,
           label: "craft axe",
+        });
+      } else if (inv3 && !inv3.hasFishingPole) {
+        candidates.push({
+          state: { has_fishing_pole: true },
+          priority: 20,
+          label: "craft fishing pole",
         });
       } else {
         // Gather wood for future fires
