@@ -8,9 +8,9 @@ export type GoapState = Map<string, number | boolean>;
 /**
  * An action the planner can use to transform world state.
  *
- * Effects use string deltas for numeric changes (e.g. "+2", "-1")
- * and direct values for boolean changes (e.g. true, false).
- * Preconditions with numbers use exact match or the ">=N" string form.
+ * Numeric effects are additive deltas (e.g. 2 means +2, -1 means subtract 1).
+ * Boolean effects are direct values (e.g. true, false).
+ * Numeric preconditions use >= comparison (current must be >= required).
  */
 export interface GoapAction {
   /** Unique identifier (e.g. "chop_tree") */

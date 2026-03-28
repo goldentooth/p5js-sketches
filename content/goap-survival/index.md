@@ -5,11 +5,11 @@ description: "Educational single-agent survival demo using Goal-Oriented Action 
 usage: "Watch the agent survive in a procedural wilderness. The side panel shows GOAP reasoning in real time. Toggle between Proactive (plans ahead) and Reactive (only responds to current needs) modes."
 draft: false
 scripts:
+  - "map-gen.js"
+  - "lighting.js"
   - "actions.js"
   - "world-state.js"
   - "needs.js"
-  - "map-gen.js"
-  - "lighting.js"
   - "rendering.js"
   - "main.js"
 technical_details: |

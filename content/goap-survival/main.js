@@ -48,9 +48,13 @@ var GoapPlanningSystem = class {
         // Plan complete -- goal selection will pick a new goal next tick
         shouldPlan = false;
       } else {
-        // Validate current plan
+        // Validate remaining plan steps (skip already-completed ones)
         var ws = buildWorldState(world, gameMap, entity, tick);
-        if (!Nuglib.validatePlan(agent.planner, ws, agent.currentPlan)) {
+        var remaining = {
+          actions: agent.currentPlan.actions.slice(agent.planStepIndex),
+          goal: agent.currentPlan.goal,
+        };
+        if (!Nuglib.validatePlan(agent.planner, ws, remaining)) {
           shouldPlan = true;
         }
       }
@@ -703,6 +707,7 @@ function regenerateWorld() {
   });
 
   aliveTicks = 0;
+  lastMonsterSpawn = 0;
   updateDOMStats();
 }
 
