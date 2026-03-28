@@ -124,6 +124,8 @@ var MOVE_TARGETS = [
   { target: "shelter", feature: FEATURE_SHELTER, stateKey: "near_shelter" },
 ];
 
+var MOVE_SEARCH_RADIUS = 15;
+
 function buildMoveToActions(map, agentX, agentY) {
   var moveActions = [];
 
@@ -131,9 +133,9 @@ function buildMoveToActions(map, agentX, agentY) {
     var mt = MOVE_TARGETS[i];
     var nearest;
     if (mt.terrain !== undefined) {
-      nearest = findNearestTerrain(map, agentX, agentY, mt.terrain);
+      nearest = findNearestTerrain(map, agentX, agentY, mt.terrain, MOVE_SEARCH_RADIUS);
     } else {
-      nearest = findNearestFeature(map, agentX, agentY, mt.feature, mt.target === "clear");
+      nearest = findNearestFeature(map, agentX, agentY, mt.feature, mt.target === "clear", MOVE_SEARCH_RADIUS);
     }
     if (!nearest) continue;
 
@@ -155,7 +157,7 @@ function buildMoveToActions(map, agentX, agentY) {
   return moveActions;
 }
 
-function findNearestTerrain(map, ax, ay, terrainType) {
+function findNearestTerrain(map, ax, ay, terrainType, maxRadius) {
   var best = null;
   var bestDist = Infinity;
 
@@ -164,6 +166,7 @@ function findNearestTerrain(map, ax, ay, terrainType) {
       if (getTerrainAt(x, y) !== terrainType) continue;
 
       var dist = Math.abs(x - ax) + Math.abs(y - ay);
+      if (maxRadius && dist > maxRadius) continue;
       if (dist < bestDist) {
         bestDist = dist;
         best = { x: x, y: y };
@@ -174,14 +177,13 @@ function findNearestTerrain(map, ax, ay, terrainType) {
   return best;
 }
 
-function findNearestFeature(map, ax, ay, featureType, wantClear) {
+function findNearestFeature(map, ax, ay, featureType, wantClear, maxRadius) {
   var best = null;
   var bestDist = Infinity;
 
   for (var y = 0; y < MAP_ROWS; y++) {
     for (var x = 0; x < MAP_COLS; x++) {
       if (wantClear) {
-        // For "clear" target: walkable grass tile with no feature, not the agent's tile
         if (map.blocksMovement(x, y)) continue;
         if (getFeatureAt(x, y) !== FEATURE_NONE) continue;
         if (getTerrainAt(x, y) !== TERRAIN_GRASS) continue;
@@ -190,6 +192,7 @@ function findNearestFeature(map, ax, ay, featureType, wantClear) {
       }
 
       var dist = Math.abs(x - ax) + Math.abs(y - ay);
+      if (maxRadius && dist > maxRadius) continue;
       if (dist < bestDist) {
         bestDist = dist;
         best = { x: x, y: y };
