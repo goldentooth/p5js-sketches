@@ -91,12 +91,6 @@ var SURVIVAL_ACTIONS = [
     cost: 1,
   },
   {
-    name: "eat_raw_fish",
-    preconditions: { has_raw_fish: true },
-    effects: { hunger: 25, has_raw_fish: false },
-    cost: 1,
-  },
-  {
     name: "eat_cooked_fish",
     preconditions: { has_cooked_fish: true },
     effects: { hunger: 60, has_cooked_fish: false },
@@ -107,6 +101,30 @@ var SURVIVAL_ACTIONS = [
     preconditions: { near_shelter: true },
     effects: { warmth: 50 },
     cost: 1,
+  },
+  {
+    name: "craft_shovel",
+    preconditions: { stick_count: 2, stone_count: 1 },
+    effects: { has_shovel: true, stick_count: -2, stone_count: -1 },
+    cost: 2,
+  },
+  {
+    name: "craft_pickaxe",
+    preconditions: { stone_count: 2, stick_count: 1 },
+    effects: { has_pickaxe: true, stone_count: -2, stick_count: -1 },
+    cost: 2,
+  },
+  {
+    name: "dig",
+    preconditions: { has_shovel: true, near_dig_site: true },
+    effects: { near_exposed_rock: true, near_dig_site: false },
+    cost: 3,
+  },
+  {
+    name: "mine_rock",
+    preconditions: { has_pickaxe: true, near_exposed_rock: true },
+    effects: { mined_rock: true, near_exposed_rock: false },
+    cost: 3,
   },
 ];
 
@@ -122,6 +140,8 @@ var MOVE_TARGETS = [
   { target: "clear", feature: FEATURE_NONE, stateKey: "near_clear" },
   { target: "water", terrain: TERRAIN_WATER, stateKey: "near_water" },
   { target: "shelter", feature: FEATURE_SHELTER, stateKey: "near_shelter" },
+  { target: "dig_site", feature: FEATURE_DIG_SITE, stateKey: "near_dig_site" },
+  { target: "exposed_rock", feature: FEATURE_EXPOSED_ROCK, stateKey: "near_exposed_rock" },
 ];
 
 var MOVE_SEARCH_RADIUS = 20;
