@@ -213,7 +213,7 @@ function setup() {
   });
 
   speedSlider.addEventListener("input", function () {
-    stepsPerFrame = parseInt(speedSlider.value);
+    stepsPerFrame = parseInt(speedSlider.value, 10);
     speedValue.textContent = stepsPerFrame;
   });
 
@@ -249,8 +249,8 @@ function setup() {
 function draw() {
   if (!paused && ants.length > 0) {
     doFrame();
+    updateDisplay();
   }
-  updateDisplay();
 }
 
 function doFrame() {
