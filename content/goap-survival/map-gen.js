@@ -21,6 +21,8 @@ var FEATURE_STICKS = 3;
 var FEATURE_ROCK = 4;
 var FEATURE_FIRE = 5;
 var FEATURE_SHELTER = 6;
+var FEATURE_DIG_SITE = 7;
+var FEATURE_EXPOSED_ROCK = 8;
 
 // ─── Map Data ──────────────────────────────────────────────────────────────
 // These parallel arrays are indexed by (y * MAP_COLS + x).
@@ -59,6 +61,10 @@ FEATURE_COLORS[FEATURE_ROCK] = [180, 180, 180];
 FEATURE_COLORS[FEATURE_FIRE] = [255, 200, 50];
 FEATURE_GLYPHS[FEATURE_SHELTER] = "H";
 FEATURE_COLORS[FEATURE_SHELTER] = [180, 140, 100];
+FEATURE_GLYPHS[FEATURE_DIG_SITE] = "%";
+FEATURE_COLORS[FEATURE_DIG_SITE] = [160, 130, 80];
+FEATURE_GLYPHS[FEATURE_EXPOSED_ROCK] = "o";
+FEATURE_COLORS[FEATURE_EXPOSED_ROCK] = [200, 200, 160];
 
 // ─── Generation ────────────────────────────────────────────────────────────
 
@@ -95,6 +101,9 @@ function generateWildernessMap(rng) {
 
   // Place stick piles (walkable, gatherable)
   placeFeatures(map, rng, FEATURE_STICKS, rng.nextRange(10, 15), 2, false);
+
+  // Place dig sites (sparse, wide spacing to force travel)
+  placeFeatures(map, rng, FEATURE_DIG_SITE, rng.nextRange(6, 10), 6, false);
 
   return map;
 }
@@ -210,6 +219,13 @@ function removeFeatureAt(x, y) {
 function shelterExistsOnMap() {
   for (var i = 0; i < features.length; i++) {
     if (features[i] === FEATURE_SHELTER) return true;
+  }
+  return false;
+}
+
+function digSiteOrExposedRockExists() {
+  for (var i = 0; i < features.length; i++) {
+    if (features[i] === FEATURE_DIG_SITE || features[i] === FEATURE_EXPOSED_ROCK) return true;
   }
   return false;
 }

@@ -23,6 +23,9 @@ var GOAL_COLORS = {
   "craft torch": [100, 200, 100], // green
   "gather wood": [100, 200, 100], // green
   shelter: [180, 140, 100],           // tan
+  "mine gold": [255, 215, 0],
+  "craft shovel": [100, 200, 100],
+  "craft pickaxe": [100, 200, 100],
   none: [255, 255, 255],    // white
 };
 
@@ -201,6 +204,13 @@ function renderPanel(world, agentEntity, tick) {
     var fishStatus = inventory.hasCookedFish ? "cooked" :
                      inventory.hasRawFish ? "raw" : "no";
     text("Fish: " + fishStatus, px, py);
+    py += lineH;
+    text("Shovel: " + (inventory.hasShovel ? "YES" : "no") +
+         "  Pick: " + (inventory.hasPickaxe ? "YES" : "no"), px, py);
+    py += lineH;
+    fill(255, 215, 0);
+    text("Gold: " + inventory.gold, px, py);
+    fill(150, 150, 150);
     py += lineH + 8;
   }
 
@@ -213,7 +223,7 @@ function renderPanel(world, agentEntity, tick) {
     var goalLabel = getGoalLabel(agent.currentGoal);
     var goalColor = GOAL_COLORS[goalLabel] || [200, 200, 200];
     fill(goalColor[0], goalColor[1], goalColor[2]);
-    text(goalLabel + " (p=" + agent.currentGoal.priority + ")", px, py);
+    text(goalLabel + " (p=" + agent.currentGoal.priority.toFixed(1) + ")", px, py);
     py += lineH + 4;
   } else {
     fill(100, 100, 100);

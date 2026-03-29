@@ -59,6 +59,22 @@ async function main() {
     console.log(`  ${cause}: ${count} (${((count / s.totalTrials) * 100).toFixed(1)}%)`);
   }
 
+  // Gold stats
+  const goldAmounts = data.results.map((r) => r.goldMined || 0);
+  const avgGold = goldAmounts.reduce((a, b) => a + b, 0) / goldAmounts.length;
+  const maxGold = Math.max(...goldAmounts);
+  const survivorGold = data.results
+    .filter((r) => r.cause === "alive")
+    .map((r) => r.goldMined || 0);
+  const avgSurvivorGold = survivorGold.length > 0
+    ? survivorGold.reduce((a, b) => a + b, 0) / survivorGold.length
+    : 0;
+
+  console.log(`\nGold:`);
+  console.log(`  Avg gold: ${avgGold.toFixed(1)}`);
+  console.log(`  Max gold: ${maxGold}`);
+  console.log(`  Avg gold (survivors): ${avgSurvivorGold.toFixed(1)}`);
+
   // Death analysis - group by last goal and action
   const deaths = data.results.filter((r) => r.cause !== "alive");
   if (deaths.length > 0) {
@@ -82,7 +98,7 @@ async function main() {
       for (const ex of g.examples) {
         const n = ex.needsAtDeath;
         console.log(
-          `    trial ${ex.trial}: tick ${ex.survived}, needs=[h:${n?.hunger?.toFixed(0)} w:${n?.warmth?.toFixed(0)} hp:${n?.health?.toFixed(0)}] axe=${ex.hadAxe} torch=${ex.hadTorch} pole=${ex.hadPole}`
+          `    trial ${ex.trial}: tick ${ex.survived}, needs=[h:${n?.hunger?.toFixed(0)} w:${n?.warmth?.toFixed(0)} hp:${n?.health?.toFixed(0)}] axe=${ex.hadAxe} torch=${ex.hadTorch} pole=${ex.hadPole} gold=${ex.goldMined ?? 0}`
         );
       }
     }

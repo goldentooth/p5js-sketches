@@ -20,6 +20,8 @@ function buildWorldState(world, map, agentEntity, tick) {
   var nearClear = false;
   var nearWater = false;
   var nearShelter = false;
+  var nearDigSite = false;
+  var nearExposedRock = false;
 
   for (var dy = -1; dy <= 1; dy++) {
     for (var dx = -1; dx <= 1; dx++) {
@@ -37,6 +39,8 @@ function buildWorldState(world, map, agentEntity, tick) {
       if (feat === FEATURE_STICKS) nearSticks = true;
       if (feat === FEATURE_FIRE) nearFire = true;
       if (feat === FEATURE_SHELTER) nearShelter = true;
+      if (feat === FEATURE_DIG_SITE) nearDigSite = true;
+      if (feat === FEATURE_EXPOSED_ROCK) nearExposedRock = true;
       if (terr === TERRAIN_WATER) nearWater = true;
 
       // near_clear: walkable grass with no feature
@@ -89,6 +93,11 @@ function buildWorldState(world, map, agentEntity, tick) {
     has_fishing_pole: inventory.hasFishingPole,
     has_raw_fish: inventory.hasRawFish,
     has_cooked_fish: inventory.hasCookedFish,
+    has_shovel: inventory.hasShovel,
+    has_pickaxe: inventory.hasPickaxe,
+    near_dig_site: nearDigSite,
+    near_exposed_rock: nearExposedRock,
+    mined_rock: false,
     is_night: isNight(tick),
     threat_visible: threatVisible,
   });

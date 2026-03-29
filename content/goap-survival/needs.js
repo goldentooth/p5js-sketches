@@ -221,6 +221,20 @@ var GoalSelectionSystem = class {
       }
     }
 
+    // Mine gold — escalating priority the longer since last mine
+    // Only pursue mining after basic survival tools are secured
+    var inv4 = world.getComponent(entity, "Inventory");
+    if (inv4 && inv4.hasAxe && inv4.hasFishingPole && digSiteOrExposedRockExists()) {
+      var agent2 = world.getComponent(entity, "GoapAgent");
+      var lastMine = (agent2 && agent2.lastMineTick) ? agent2.lastMineTick : 0;
+      var minePriority = Math.min(50, 15 + (tick - lastMine) * 0.1);
+      candidates.push({
+        state: { mined_rock: true },
+        priority: minePriority,
+        label: "mine gold",
+      });
+    }
+
     // Default proactive preparation goal
     if (candidates.length === 0) {
       var inv3 = world.getComponent(entity, "Inventory");
@@ -235,6 +249,18 @@ var GoalSelectionSystem = class {
           state: { has_fishing_pole: true },
           priority: 20,
           label: "craft fishing pole",
+        });
+      } else if (inv3 && !inv3.hasShovel) {
+        candidates.push({
+          state: { has_shovel: true },
+          priority: 20,
+          label: "craft shovel",
+        });
+      } else if (inv3 && !inv3.hasPickaxe) {
+        candidates.push({
+          state: { has_pickaxe: true },
+          priority: 20,
+          label: "craft pickaxe",
         });
       } else {
         // Gather wood for future fires

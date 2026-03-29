@@ -192,18 +192,33 @@ var PlanExecutionSystem = class {
         }
         return true;
 
+      case "craft_shovel":
+        if (inventory.sticks >= 2 && inventory.stones >= 1) {
+          inventory.sticks -= 2;
+          inventory.stones--;
+          inventory.hasShovel = true;
+        }
+        return true;
+
+      case "craft_pickaxe":
+        if (inventory.stones >= 2 && inventory.sticks >= 1) {
+          inventory.stones -= 2;
+          inventory.sticks--;
+          inventory.hasPickaxe = true;
+        }
+        return true;
+
+      case "dig":
+        return this.executeDig(world, entity, pos, inventory);
+
+      case "mine_rock":
+        return this.executeMineRock(world, entity, pos, inventory);
+
       case "catch_fish":
         return this.executeCatchFish(world, entity, pos, inventory);
 
       case "cook_fish":
         return this.executeCookFish(world, entity, pos, inventory);
-
-      case "eat_raw_fish":
-        if (inventory.hasRawFish) {
-          inventory.hasRawFish = false;
-          needs.hunger = Math.min(100, needs.hunger + 25);
-        }
-        return true;
 
       case "eat_cooked_fish":
         if (inventory.hasCookedFish) {
@@ -234,6 +249,8 @@ var PlanExecutionSystem = class {
     else if (targetType === "sticks") featureType = FEATURE_STICKS;
     else if (targetType === "fire") featureType = FEATURE_FIRE;
     else if (targetType === "shelter") featureType = FEATURE_SHELTER;
+    else if (targetType === "dig_site") featureType = FEATURE_DIG_SITE;
+    else if (targetType === "exposed_rock") featureType = FEATURE_EXPOSED_ROCK;
     else if (targetType === "clear") wantClear = true;
     else if (targetType === "water") wantWater = true;
 
@@ -466,6 +483,60 @@ var PlanExecutionSystem = class {
         }
       }
     }
+    return true;
+  }
+
+  executeDig(world, entity, pos, inventory) {
+    if (!inventory.hasShovel) return true;
+
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var nx = pos.x + dx;
+        var ny = pos.y + dy;
+        if (getFeatureAt(nx, ny) === FEATURE_DIG_SITE) {
+          setFeatureAt(nx, ny, FEATURE_EXPOSED_ROCK);
+          world.addComponent(entity, "Action", {
+            type: "wait",
+            energyCost: 100,
+          });
+          return true;
+        }
+      }
+    }
+    this.triggerReplan(world, entity);
+    return true;
+  }
+
+  executeMineRock(world, entity, pos, inventory) {
+    if (!inventory.hasPickaxe) return true;
+
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var nx = pos.x + dx;
+        var ny = pos.y + dy;
+        if (getFeatureAt(nx, ny) === FEATURE_EXPOSED_ROCK) {
+          removeFeatureAt(nx, ny);
+          // 40% chance to find gold
+          if (rng.nextFloat() < 0.4) {
+            inventory.gold++;
+          }
+          // Update lastMineTick
+          var agent = world.getComponent(entity, "GoapAgent");
+          var clock = world.getResource("GameClock");
+          if (agent && clock) {
+            agent.lastMineTick = clock.tick;
+          }
+          world.addComponent(entity, "Action", {
+            type: "wait",
+            energyCost: 100,
+          });
+          return true;
+        }
+      }
+    }
+    this.triggerReplan(world, entity);
     return true;
   }
 
@@ -883,6 +954,9 @@ function regenerateWorld() {
     hasFishingPole: false,
     hasRawFish: false,
     hasCookedFish: false,
+    hasShovel: false,
+    hasPickaxe: false,
+    gold: 0,
   });
 
   // Initialize GOAP agent
@@ -893,6 +967,7 @@ function regenerateWorld() {
     currentPlan: null,
     planStepIndex: 0,
     needsReplan: true,
+    lastMineTick: 0,
   });
 
   aliveTicks = 0;
