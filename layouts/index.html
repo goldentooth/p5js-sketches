@@ -14,7 +14,25 @@
   h1 {
     text-align: center;
     color: #ff6b6b;
+    margin-bottom: 0.5rem;
+  }
+
+  .intro {
+    text-align: center;
+    color: #999;
     margin-bottom: 3rem;
+    font-size: 1.1rem;
+  }
+
+  .intro a {
+    color: #4ecdc4;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .intro a:hover {
+    color: #ff6b6b;
+    text-decoration: underline;
   }
 
   .gallery {
@@ -77,6 +95,7 @@
 
   .sketch-content {
     padding: 1.5rem;
+    text-align: center;
   }
 
   .sketch-title {
@@ -143,43 +162,49 @@
 {{ end }}
 
 {{ define "main" }}
-<h1>🎨 P5.js Sketches Gallery</h1>
+<h1>🎨 P5.js Sketches</h1>
+<p class="intro">Interactive creative coding experiments by <a href="https://github.com/ndouglas" target="_blank"
+    rel="noopener noreferrer">Nathan Douglas</a>. Source on <a href="https://github.com/bitterbridge/p5js-sketches"
+    target="_blank" rel="noopener noreferrer">GitHub</a>.</p>
 <div class="gallery">
   {{ $pages := where .Site.RegularPages "Draft" false }}
   {{ if eq (len $pages) 0 }}
   <div class="no-sketches">No sketches available yet.</div>
   {{ else }}
-    {{ range $pages.ByDate.Reverse }}
-    <div class="sketch-card">
-      <div class="sketch-preview">
-        {{ $previewPng := .Resources.GetMatch "preview.png" }}
-        {{ $previewGif := .Resources.GetMatch "preview.gif" }}
-        {{ if $previewPng }}
-          <img src="{{ $previewPng.RelPermalink }}" alt="{{ .Title }} preview" class="preview-png">
-          {{ if $previewGif }}
-          <img src="{{ $previewGif.RelPermalink }}" alt="{{ .Title }} animation" class="preview-gif">
-          {{ end }}
-        {{ else if $previewGif }}
-          <img src="{{ $previewGif.RelPermalink }}" alt="{{ .Title }} animation">
-        {{ else }}
-          <div class="preview-placeholder">{{ substr .Title 0 1 | upper }}</div>
-        {{ end }}
-      </div>
-      <div class="sketch-content">
-        <div class="sketch-title">{{ .Title }}</div>
-        {{ with .Date }}
-        <div class="sketch-date">{{ .Format "January 2, 2006" }}</div>
-        {{ end }}
-        {{ with .Description }}
-        <div class="sketch-description">{{ . }}</div>
-        {{ end }}
-        <a href="{{ .RelPermalink }}" class="sketch-link">View Sketch</a>
-      </div>
+  {{ range $pages.ByDate.Reverse }}
+  <div class="sketch-card">
+    <div class="sketch-preview">
+      {{ $previewPng := .Resources.GetMatch "preview.png" }}
+      {{ $previewGif := .Resources.GetMatch "preview.gif" }}
+      {{ if $previewPng }}
+      <img src="{{ $previewPng.RelPermalink }}" alt="{{ .Title }} preview" class="preview-png">
+      {{ if $previewGif }}
+      <img src="{{ $previewGif.RelPermalink }}" alt="{{ .Title }} animation" class="preview-gif">
+      {{ end }}
+      {{ else if $previewGif }}
+      <img src="{{ $previewGif.RelPermalink }}" alt="{{ .Title }} animation">
+      {{ else }}
+      <div class="preview-placeholder">{{ substr .Title 0 1 | upper }}</div>
+      {{ end }}
     </div>
-    {{ end }}
+    <div class="sketch-content">
+      <div class="sketch-title">{{ .Title }}</div>
+      {{ with .Date }}
+      <div class="sketch-date">{{ .Format "January 2, 2006" }}</div>
+      {{ end }}
+      {{ with .Description }}
+      <div class="sketch-description">{{ . }}</div>
+      {{ end }}
+      <a href="{{ .RelPermalink }}" class="sketch-link">View Sketch</a>
+    </div>
+  </div>
+  {{ end }}
   {{ end }}
 </div>
 <div class="footer">
-  <p>Built with <a href="https://gohugo.io/" target="_blank" rel="noopener noreferrer">Hugo</a></p>
+  <p>Built with <a href="https://gohugo.io/" target="_blank" rel="noopener noreferrer">Hugo</a> &middot; <a
+      href="https://github.com/bitterbridge/p5js-sketches" target="_blank" rel="noopener noreferrer">Source</a> &middot;
+    <a href="https://darkdell.net" target="_blank" rel="noopener noreferrer">darkdell.net</a>
+  </p>
 </div>
 {{ end }}
