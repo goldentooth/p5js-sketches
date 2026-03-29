@@ -519,7 +519,7 @@ var PlanExecutionSystem = class {
         if (getFeatureAt(nx, ny) === FEATURE_EXPOSED_ROCK) {
           removeFeatureAt(nx, ny);
           // 40% chance to find gold
-          if (Math.random() < 0.4) {
+          if (rng.nextFloat() < 0.4) {
             inventory.gold++;
           }
           // Update lastMineTick

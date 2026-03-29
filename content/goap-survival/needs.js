@@ -222,8 +222,9 @@ var GoalSelectionSystem = class {
     }
 
     // Mine gold — escalating priority the longer since last mine
-    if (digSiteOrExposedRockExists()) {
-      var inv4 = world.getComponent(entity, "Inventory");
+    // Only pursue mining after basic survival tools are secured
+    var inv4 = world.getComponent(entity, "Inventory");
+    if (inv4 && inv4.hasAxe && inv4.hasFishingPole && digSiteOrExposedRockExists()) {
       var agent2 = world.getComponent(entity, "GoapAgent");
       var lastMine = (agent2 && agent2.lastMineTick) ? agent2.lastMineTick : 0;
       var minePriority = Math.min(50, 15 + (tick - lastMine) * 0.1);
