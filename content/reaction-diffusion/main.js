@@ -147,7 +147,7 @@ function stepSimulation(steps) {
 }
 
 function laplacian(grid, x, y) {
-  // Weighted 5-point stencil: cardinal +0.2, diagonal +0.05, center -1.0
+  // Weighted 9-point stencil: cardinal +0.2, diagonal +0.05, center -1.0
   const xL = (x - 1 + GRID_W) % GRID_W;
   const xR = (x + 1) % GRID_W;
   const yU = (y - 1 + GRID_H) % GRID_H;
@@ -373,11 +373,7 @@ function resetGrid() {
   gridB = new Float32Array(GRID_CELLS);
   nextA = new Float32Array(GRID_CELLS);
   nextB = new Float32Array(GRID_CELLS);
-
-  // Fill A with 1.0 (B stays 0.0)
-  for (let i = 0; i < GRID_CELLS; i++) {
-    gridA[i] = 1.0;
-  }
+  gridA.fill(1.0);
 }
 
 // ─── Paint Interaction ────────────────────────────────────────────────────
