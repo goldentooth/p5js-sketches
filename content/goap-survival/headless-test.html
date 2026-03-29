@@ -106,6 +106,9 @@ function runTrials(numTrials, maxTicks) {
           hadTorch: inv ? inv.hasTorch : false,
           hadPole: inv ? inv.hasFishingPole : false,
           hadFood: inv ? inv.hasFood : false,
+          hadShovel: inv ? inv.hasShovel : false,
+          hadPickaxe: inv ? inv.hasPickaxe : false,
+          goldMined: inv ? inv.gold : 0,
         });
         deathsByCause[cause] = (deathsByCause[cause] || 0) + 1;
         totalSurvived += t;
@@ -128,6 +131,9 @@ function runTrials(numTrials, maxTicks) {
           hadTorch: inv ? inv.hasTorch : false,
           hadPole: inv ? inv.hasFishingPole : false,
           hadFood: inv ? inv.hasFood : false,
+          hadShovel: inv ? inv.hasShovel : false,
+          hadPickaxe: inv ? inv.hasPickaxe : false,
+          goldMined: inv ? inv.gold : 0,
         });
         totalSurvived += maxTicks;
       }
