@@ -198,13 +198,6 @@ var PlanExecutionSystem = class {
       case "cook_fish":
         return this.executeCookFish(world, entity, pos, inventory);
 
-      case "eat_raw_fish":
-        if (inventory.hasRawFish) {
-          inventory.hasRawFish = false;
-          needs.hunger = Math.min(100, needs.hunger + 25);
-        }
-        return true;
-
       case "eat_cooked_fish":
         if (inventory.hasCookedFish) {
           inventory.hasCookedFish = false;
@@ -883,6 +876,9 @@ function regenerateWorld() {
     hasFishingPole: false,
     hasRawFish: false,
     hasCookedFish: false,
+    hasShovel: false,
+    hasPickaxe: false,
+    gold: 0,
   });
 
   // Initialize GOAP agent
@@ -893,6 +889,7 @@ function regenerateWorld() {
     currentPlan: null,
     planStepIndex: 0,
     needsReplan: true,
+    lastMineTick: 0,
   });
 
   aliveTicks = 0;
