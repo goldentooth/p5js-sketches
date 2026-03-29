@@ -196,17 +196,17 @@ function renderPanel(world, agentEntity, tick) {
     text("Wood: " + inventory.wood, px, py);
     py += lineH;
     text("Axe: " + (inventory.hasAxe ? "YES" : "no") +
-         "  Torch: " + (inventory.hasTorch ? "YES" : "no"), px, py);
+      "  Torch: " + (inventory.hasTorch ? "YES" : "no"), px, py);
     py += lineH;
     text("Pole: " + (inventory.hasFishingPole ? "YES" : "no") +
-         "  Food: " + (inventory.hasFood ? "YES" : "no"), px, py);
+      "  Food: " + (inventory.hasFood ? "YES" : "no"), px, py);
     py += lineH;
     var fishStatus = inventory.hasCookedFish ? "cooked" :
-                     inventory.hasRawFish ? "raw" : "no";
+      inventory.hasRawFish ? "raw" : "no";
     text("Fish: " + fishStatus, px, py);
     py += lineH;
     text("Shovel: " + (inventory.hasShovel ? "YES" : "no") +
-         "  Pick: " + (inventory.hasPickaxe ? "YES" : "no"), px, py);
+      "  Pick: " + (inventory.hasPickaxe ? "YES" : "no"), px, py);
     py += lineH;
     fill(255, 215, 0);
     text("Gold: " + inventory.gold, px, py);
