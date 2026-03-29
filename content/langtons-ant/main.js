@@ -3,32 +3,32 @@
 // 400x400 pixel grid. Generalized multi-color rules.
 // Direct pixel manipulation for performance.
 
-var GRID_SIZE = 400;
-var GRID_CELLS = GRID_SIZE * GRID_SIZE;
+const GRID_SIZE = 400;
+const GRID_CELLS = GRID_SIZE * GRID_SIZE;
 
 // Simulation state
-var grid;          // Uint8Array — cell states
-var ants;          // Array of {x, y, dir, color}
-var rule;          // String, e.g. "RL"
-var palette;       // Array of [r, g, b] per state
-var stepsPerFrame; // Number
-var totalSteps;    // Number
-var paused;        // Boolean
-var wrapEdges;     // Boolean
+let grid;          // Uint8Array — cell states
+let ants;          // Array of {x, y, dir, color}
+let rule;          // String, e.g. "RL"
+let palette;       // Array of [r, g, b] per state
+let stepsPerFrame; // Number
+let totalSteps;    // Number
+let paused;        // Boolean
+let wrapEdges;     // Boolean
 
 // Direction vectors: N=0, E=1, S=2, W=3
-var DX = [0, 1, 0, -1];
-var DY = [-1, 0, 1, 0];
+const DX = [0, 1, 0, -1];
+const DY = [-1, 0, 1, 0];
 
 // DOM elements
-var pauseBtn, stepBtn, resetBtn, addAntBtn;
-var speedSlider, speedValue, ruleInput, presetSelect;
-var wrapCheckbox, stepCountSpan, antCountSpan;
+let pauseBtn, stepBtn, resetBtn, addAntBtn;
+let speedSlider, speedValue, ruleInput, presetSelect;
+let wrapCheckbox, stepCountSpan, antCountSpan;
 
 // ─── Color Palette ────────────────────────────────────────────────────────
 
 function buildPalette(ruleLength) {
-  var colors = [];
+  const colors = [];
   // State 0 is always black (unvisited)
   colors.push([0, 0, 0]);
 
@@ -38,13 +38,13 @@ function buildPalette(ruleLength) {
   } else {
     // HSL ramp from deep blue (220) to warm gold (45)
     // We go 220 -> 360 -> 45 (wrapping through red)
-    var startHue = 220;
-    var endHue = 405; // 45 + 360, so we go the long way around
-    var numColors = ruleLength - 1; // exclude state 0
-    for (var i = 0; i < numColors; i++) {
-      var t = numColors === 1 ? 0.5 : i / (numColors - 1);
-      var h = (startHue + t * (endHue - startHue)) % 360;
-      var rgb = hslToRgb(h, 80, 55);
+    const startHue = 220;
+    const endHue = 405; // 45 + 360, so we go the long way around
+    const numColors = ruleLength - 1; // exclude state 0
+    for (let i = 0; i < numColors; i++) {
+      const t = numColors === 1 ? 0.5 : i / (numColors - 1);
+      const h = (startHue + t * (endHue - startHue)) % 360;
+      const rgb = hslToRgb(h, 80, 55);
       colors.push(rgb);
     }
   }
@@ -55,10 +55,10 @@ function hslToRgb(h, s, l) {
   // h: 0-360, s: 0-100, l: 0-100 -> [r, g, b] 0-255
   s /= 100;
   l /= 100;
-  var c = (1 - Math.abs(2 * l - 1)) * s;
-  var x = c * (1 - Math.abs((h / 60) % 2 - 1));
-  var m = l - c / 2;
-  var r, g, b;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c / 2;
+  let r, g, b;
   if (h < 60) { r = c; g = x; b = 0; }
   else if (h < 120) { r = x; g = c; b = 0; }
   else if (h < 180) { r = 0; g = c; b = x; }
@@ -73,12 +73,12 @@ function hslToRgb(h, s, l) {
 }
 
 function buildAntColors(count) {
-  var colors = [];
-  for (var i = 0; i < count; i++) {
+  const colors = [];
+  for (let i = 0; i < count; i++) {
     if (i === 0) {
       colors.push([255, 107, 107]); // red for first ant
     } else {
-      var h = (i * 360 / count) % 360;
+      const h = (i * 360 / count) % 360;
       colors.push(hslToRgb(h, 90, 60));
     }
   }
@@ -88,14 +88,15 @@ function buildAntColors(count) {
 // ─── Simulation ───────────────────────────────────────────────────────────
 
 function stepAnts(count) {
-  for (var s = 0; s < count; s++) {
-    for (var i = ants.length - 1; i >= 0; i--) {
-      var ant = ants[i];
-      var idx = ant.y * GRID_SIZE + ant.x;
-      var state = grid[idx];
+  for (let s = 0; s < count; s++) {
+    // Reverse iteration so splice during removal doesn't skip ants
+    for (let i = ants.length - 1; i >= 0; i--) {
+      const ant = ants[i];
+      const idx = ant.y * GRID_SIZE + ant.x;
+      const state = grid[idx];
 
       // Turn based on rule
-      var turn = rule.charAt(state);
+      const turn = rule.charAt(state);
       if (turn === "R") {
         ant.dir = (ant.dir + 1) % 4;
       } else {
@@ -128,7 +129,7 @@ function stepAnts(count) {
 }
 
 function setPixelAt(x, y, rgb) {
-  var i = (y * GRID_SIZE + x) * 4;
+  const i = (y * GRID_SIZE + x) * 4;
   pixels[i] = rgb[0];
   pixels[i + 1] = rgb[1];
   pixels[i + 2] = rgb[2];
@@ -138,24 +139,24 @@ function setPixelAt(x, y, rgb) {
 // ─── Ant Markers ──────────────────────────────────────────────────────────
 
 // Store previous marker positions so we can restore the underlying pixels
-var prevMarkers = [];
+let prevMarkers = [];
 
 function clearAntMarkers() {
-  for (var i = 0; i < prevMarkers.length; i++) {
-    var m = prevMarkers[i];
+  for (let i = 0; i < prevMarkers.length; i++) {
+    const m = prevMarkers[i];
     setPixelAt(m.x, m.y, palette[grid[m.y * GRID_SIZE + m.x]]);
   }
   prevMarkers = [];
 }
 
 function drawAntMarkers() {
-  for (var i = 0; i < ants.length; i++) {
-    var ant = ants[i];
+  for (let i = 0; i < ants.length; i++) {
+    const ant = ants[i];
     // 3x3 marker centered on ant
-    for (var dy = -1; dy <= 1; dy++) {
-      for (var dx = -1; dx <= 1; dx++) {
-        var px = ant.x + dx;
-        var py = ant.y + dy;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const px = ant.x + dx;
+        const py = ant.y + dy;
         if (px < 0 || px >= GRID_SIZE || py < 0 || py >= GRID_SIZE) continue;
         prevMarkers.push({ x: px, y: py });
         setPixelAt(px, py, ant.color);
@@ -167,7 +168,7 @@ function drawAntMarkers() {
 // ─── p5.js Setup & Draw ──────────────────────────────────────────────────
 
 function setup() {
-  var cnv = createCanvas(GRID_SIZE, GRID_SIZE);
+  const cnv = createCanvas(GRID_SIZE, GRID_SIZE);
   cnv.parent(select("#sketch-container"));
   pixelDensity(1);
 
@@ -201,7 +202,7 @@ function setup() {
   });
 
   addAntBtn.addEventListener("click", function () {
-    var dir = Math.floor(Math.random() * 4);
+    const dir = Math.floor(Math.random() * 4);
     ants.push({
       x: Math.floor(GRID_SIZE / 2),
       y: Math.floor(GRID_SIZE / 2),
@@ -282,7 +283,7 @@ function resetSimulation(newRule) {
 
   // Clear canvas to black
   loadPixels();
-  for (var i = 0; i < pixels.length; i += 4) {
+  for (let i = 0; i < pixels.length; i += 4) {
     pixels[i] = 0;
     pixels[i + 1] = 0;
     pixels[i + 2] = 0;
@@ -296,15 +297,15 @@ function resetSimulation(newRule) {
 }
 
 function applyRule(input) {
-  var cleaned = input.toUpperCase().replace(/[^RL]/g, "");
+  const cleaned = input.toUpperCase().replace(/[^RL]/g, "");
   if (cleaned.length < 2) return;
   ruleInput.value = cleaned;
   resetSimulation(cleaned);
 }
 
 function reassignAntColors() {
-  var colors = buildAntColors(ants.length);
-  for (var i = 0; i < ants.length; i++) {
+  const colors = buildAntColors(ants.length);
+  for (let i = 0; i < ants.length; i++) {
     ants[i].color = colors[i];
   }
 }
@@ -315,15 +316,21 @@ function updateAntCount() {
 
 // ─── Paint Interaction ────────────────────────────────────────────────────
 
-function paintAt(mx, my) {
+// Track paint mode: true = painting (setting state 1), false = erasing (setting state 0)
+let paintMode = true;
+
+function paintAt(mx, my, setMode) {
   if (!paused) return;
-  var x = Math.floor(mx);
-  var y = Math.floor(my);
+  const x = Math.floor(mx);
+  const y = Math.floor(my);
   if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return;
 
-  var idx = y * GRID_SIZE + x;
-  // Toggle between state 0 and state 1
-  grid[idx] = grid[idx] === 0 ? 1 : 0;
+  const idx = y * GRID_SIZE + x;
+  if (setMode) {
+    // On initial click, decide mode based on current cell
+    paintMode = grid[idx] === 0;
+  }
+  grid[idx] = paintMode ? 1 : 0;
 
   loadPixels();
   clearAntMarkers();
@@ -334,12 +341,12 @@ function paintAt(mx, my) {
 
 function mousePressed() {
   if (mouseX >= 0 && mouseX < GRID_SIZE && mouseY >= 0 && mouseY < GRID_SIZE) {
-    paintAt(mouseX, mouseY);
+    paintAt(mouseX, mouseY, true);
   }
 }
 
 function mouseDragged() {
   if (mouseX >= 0 && mouseX < GRID_SIZE && mouseY >= 0 && mouseY < GRID_SIZE) {
-    paintAt(mouseX, mouseY);
+    paintAt(mouseX, mouseY, false);
   }
 }
