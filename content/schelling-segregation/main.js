@@ -38,6 +38,11 @@ let unhappySet = null;
 let segregationHistory = [];
 const MAX_HISTORY = 300;
 
+// Stagnation tracking
+let stagnationCounter = 0;
+let lastUnhappyCount = -1;
+let statusMessage = '';
+
 // Rendering
 const CHAR_HEIGHT = 14;
 const CHAR_WIDTH = 9;
@@ -168,6 +173,225 @@ function syncGrid() {
   }
 }
 
+// === Simulation logic ===
+
+function measureSegregation() {
+  let totalSimilarity = 0;
+  let agentCount = 0;
+
+  for (let y = 0; y < gridSize; y++) {
+    for (let x = 0; x < gridSize; x++) {
+      const groupId = cells[y * gridSize + x];
+      if (groupId === EMPTY) continue;
+
+      let sameCount = 0;
+      let neighborCount = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || nx >= gridSize || ny < 0 || ny >= gridSize) continue;
+          const neighbor = cells[ny * gridSize + nx];
+          if (neighbor === EMPTY) continue;
+          neighborCount++;
+          if (neighbor === groupId) sameCount++;
+        }
+      }
+      if (neighborCount > 0) {
+        totalSimilarity += sameCount / neighborCount;
+        agentCount++;
+      }
+    }
+  }
+
+  return agentCount > 0 ? totalSimilarity / agentCount : 0;
+}
+
+function getEmptyCells() {
+  const empties = [];
+  for (let i = 0; i < cells.length; i++) {
+    if (cells[i] === EMPTY) empties.push(i);
+  }
+  return empties;
+}
+
+function moveRandom(unhappyIndices) {
+  const empties = getEmptyCells();
+  if (empties.length === 0) return;
+
+  for (const idx of unhappyIndices) {
+    if (cells[idx] === EMPTY) continue;
+    if (empties.length === 0) break;
+
+    const emptyPick = Math.floor(Math.random() * empties.length);
+    const targetIdx = empties[emptyPick];
+
+    cells[targetIdx] = cells[idx];
+    cells[idx] = EMPTY;
+
+    empties[emptyPick] = idx;
+  }
+}
+
+function moveNearestSatisfying(unhappyIndices) {
+  const emptySet = new Set();
+  for (let i = 0; i < cells.length; i++) {
+    if (cells[i] === EMPTY) emptySet.add(i);
+  }
+
+  for (const idx of unhappyIndices) {
+    if (cells[idx] === EMPTY) continue;
+    const groupId = cells[idx];
+    const startX = idx % gridSize;
+    const startY = Math.floor(idx / gridSize);
+
+    const visited = new Set();
+    const queue = [[startX, startY, 0]];
+    visited.add(idx);
+    let found = -1;
+
+    while (queue.length > 0) {
+      const [cx, cy, dist] = queue.shift();
+      const ci = cy * gridSize + cx;
+
+      if (ci !== idx && emptySet.has(ci)) {
+        if (!wouldBeUnhappy(cx, cy, groupId, idx)) {
+          found = ci;
+          break;
+        }
+      }
+
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (nx < 0 || nx >= gridSize || ny < 0 || ny >= gridSize) continue;
+          const ni = ny * gridSize + nx;
+          if (!visited.has(ni)) {
+            visited.add(ni);
+            queue.push([nx, ny, dist + 1]);
+          }
+        }
+      }
+    }
+
+    if (found >= 0) {
+      cells[found] = groupId;
+      cells[idx] = EMPTY;
+      emptySet.delete(found);
+      emptySet.add(idx);
+    }
+  }
+}
+
+function wouldBeUnhappy(x, y, groupId, ignoreIdx) {
+  const settingsIdx = groupId - 1;
+  const settings = groupSettings[settingsIdx];
+  if (!settings) return false;
+
+  let sameCount = 0;
+  let neighborCount = 0;
+
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || nx >= gridSize || ny < 0 || ny >= gridSize) continue;
+      const ni = ny * gridSize + nx;
+      if (ni === ignoreIdx) continue;
+      const neighbor = cells[ni];
+      if (neighbor === EMPTY) continue;
+      neighborCount++;
+      if (neighbor === groupId) sameCount++;
+    }
+  }
+
+  if (neighborCount === 0) return false;
+  const similarity = sameCount / neighborCount;
+  return similarity < settings.tolerance || similarity > settings.antiBias;
+}
+
+function moveSwap(unhappyIndices) {
+  const shuffled = [...unhappyIndices];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = shuffled[i];
+    shuffled[i] = shuffled[j];
+    shuffled[j] = tmp;
+  }
+
+  const swapped = new Set();
+  for (let i = 0; i < shuffled.length - 1; i += 2) {
+    const a = shuffled[i];
+    const b = shuffled[i + 1];
+    if (swapped.has(a) || swapped.has(b)) continue;
+    if (cells[a] === EMPTY || cells[b] === EMPTY) continue;
+    if (cells[a] === cells[b]) continue;
+
+    const tmp = cells[a];
+    cells[a] = cells[b];
+    cells[b] = tmp;
+    swapped.add(a);
+    swapped.add(b);
+  }
+}
+
+function doStep() {
+  computeUnhappySet();
+
+  const unhappyIndices = [];
+  for (let i = 0; i < unhappySet.length; i++) {
+    if (unhappySet[i]) unhappyIndices.push(i);
+  }
+
+  if (unhappyIndices.length === 0) {
+    paused = true;
+    statusMessage = 'Equilibrium at step ' + stepCount;
+    const playBtn = document.getElementById('play-btn');
+    if (playBtn) playBtn.textContent = 'Play';
+    return;
+  }
+
+  if (unhappyIndices.length === lastUnhappyCount) {
+    stagnationCounter++;
+  } else {
+    stagnationCounter = 0;
+  }
+  lastUnhappyCount = unhappyIndices.length;
+  if (stagnationCounter >= 50) {
+    statusMessage = 'Stagnated';
+  } else {
+    statusMessage = '';
+  }
+
+  // Shuffle unhappy agents
+  for (let i = unhappyIndices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = unhappyIndices[i];
+    unhappyIndices[i] = unhappyIndices[j];
+    unhappyIndices[j] = tmp;
+  }
+
+  if (strategy === 'random') {
+    moveRandom(unhappyIndices);
+  } else if (strategy === 'nearest') {
+    moveNearestSatisfying(unhappyIndices);
+  } else if (strategy === 'swap') {
+    moveSwap(unhappyIndices);
+  }
+
+  stepCount++;
+
+  const seg = measureSegregation();
+  segregationHistory.push(seg);
+  if (segregationHistory.length > MAX_HISTORY) {
+    segregationHistory.shift();
+  }
+}
+
 // === setup(), draw(), rendering, and chart ===
 
 function setup() {
@@ -273,7 +497,6 @@ function drawChart() {
 }
 
 // === Stubs for later tasks ===
-function doStep() {}
 function bindControls() {}
 function buildGroupControlsUI() {}
 function updateReadouts() {}
