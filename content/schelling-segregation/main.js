@@ -507,7 +507,11 @@ function resetSimulation() {
   lastUnhappyCount = -1;
   statusMessage = '';
   segregationHistory = [];
+  initGroupSettings();
   initCells();
+  computeUnhappySet();
+  const initialSeg = measureSegregation();
+  segregationHistory.push(initialSeg);
   syncGrid();
   renderAll();
   updateReadouts();
@@ -586,6 +590,7 @@ function bindControls() {
   densitySlider.addEventListener('input', function () {
     density = parseInt(densitySlider.value, 10) / 100;
     densityValue.textContent = parseInt(densitySlider.value, 10);
+    resetSimulation();
   });
 
   strategySelect.addEventListener('change', function () {
