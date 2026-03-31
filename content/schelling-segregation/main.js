@@ -496,7 +496,185 @@ function drawChart() {
   image(chartBuffer, 0, height - CHART_HEIGHT);
 }
 
-// === Stubs for later tasks ===
-function bindControls() {}
-function buildGroupControlsUI() {}
-function updateReadouts() {}
+// === UI Control Implementations ===
+
+function resetSimulation() {
+  paused = true;
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn) playBtn.textContent = 'Play';
+  stepCount = 0;
+  stagnationCounter = 0;
+  lastUnhappyCount = -1;
+  statusMessage = '';
+  segregationHistory = [];
+  initCells();
+  syncGrid();
+  renderAll();
+  updateReadouts();
+}
+
+function fullReset() {
+  const dims = Nuglib.calculateGridDimensions(
+    CHAR_WIDTH * gridSize,
+    CHAR_HEIGHT * gridSize,
+    CHAR_WIDTH,
+    CHAR_HEIGHT
+  );
+
+  resizeCanvas(dims.adjustedWidth, dims.adjustedHeight + CHART_HEIGHT);
+  background(0);
+
+  grid = Nuglib.createGrid(gridSize, gridSize);
+  gridRenderer = Nuglib.GridRenderer({
+    cellHeight: CHAR_HEIGHT,
+    cellWidth: CHAR_WIDTH,
+    backgroundColor: color(0),
+  });
+  layerManager = new Nuglib.LayerManager(window);
+  layerManager.createLayer('grid', Nuglib.createTextLayerConfig(
+    dims.adjustedWidth,
+    dims.adjustedHeight,
+    CHAR_HEIGHT,
+    'Courier New'
+  ));
+  chartBuffer = createGraphics(dims.adjustedWidth, CHART_HEIGHT);
+
+  initGroupSettings();
+  resetSimulation();
+  buildGroupControlsUI();
+}
+
+function bindControls() {
+  const playBtn = document.getElementById('play-btn');
+  const stepBtn = document.getElementById('step-btn');
+  const resetBtn = document.getElementById('reset-btn');
+  const speedSlider = document.getElementById('speed-slider');
+  const speedValue = document.getElementById('speed-value');
+  const gridSelect = document.getElementById('grid-select');
+  const densitySlider = document.getElementById('density-slider');
+  const densityValue = document.getElementById('density-value');
+  const strategySelect = document.getElementById('strategy-select');
+  const addGroupBtn = document.getElementById('add-group-btn');
+  const removeGroupBtn = document.getElementById('remove-group-btn');
+
+  playBtn.addEventListener('click', function () {
+    paused = !paused;
+    playBtn.textContent = paused ? 'Play' : 'Pause';
+  });
+
+  stepBtn.addEventListener('click', function () {
+    doStep();
+    syncGrid();
+    renderAll();
+    updateReadouts();
+  });
+
+  resetBtn.addEventListener('click', function () {
+    resetSimulation();
+  });
+
+  speedSlider.addEventListener('input', function () {
+    stepsPerFrame = parseInt(speedSlider.value, 10);
+    speedValue.textContent = stepsPerFrame;
+  });
+
+  gridSelect.addEventListener('change', function () {
+    gridSize = parseInt(gridSelect.value, 10);
+    fullReset();
+  });
+
+  densitySlider.addEventListener('input', function () {
+    density = parseInt(densitySlider.value, 10) / 100;
+    densityValue.textContent = parseInt(densitySlider.value, 10);
+  });
+
+  strategySelect.addEventListener('change', function () {
+    strategy = strategySelect.value;
+  });
+
+  addGroupBtn.addEventListener('click', function () {
+    if (activeGroupCount >= 6) return;
+    activeGroupCount++;
+    resetSimulation();
+    buildGroupControlsUI();
+  });
+
+  removeGroupBtn.addEventListener('click', function () {
+    if (activeGroupCount <= 2) return;
+    activeGroupCount--;
+    resetSimulation();
+    buildGroupControlsUI();
+  });
+}
+
+function buildGroupControlsUI() {
+  const container = document.getElementById('group-controls');
+  if (!container) return;
+  container.innerHTML = '';
+
+  for (let i = 0; i < activeGroupCount; i++) {
+    const g = GROUPS[i];
+    const settings = groupSettings[i];
+    const rgbStr = 'rgb(' + g.fg[0] + ',' + g.fg[1] + ',' + g.fg[2] + ')';
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:4px 0; border-bottom:1px solid #333;';
+
+    row.innerHTML =
+      '<span style="color:' + rgbStr + '; font-family:Courier New; font-weight:bold; min-width:60px;">' + g.glyph + ' ' + g.name + '</span>' +
+      '<label style="font-size:0.8em;">Pop: <span id="prop-value-' + i + '">' + Math.round(settings.proportion * 100) + '</span>%' +
+      '<input type="range" class="control-slider" id="prop-slider-' + i + '" min="5" max="200" value="' + Math.round(settings.proportion * 100) + '" style="width:80px;"></label>' +
+      '<label style="font-size:0.8em;">Tol: <span id="tol-value-' + i + '">' + Math.round(settings.tolerance * 100) + '</span>%' +
+      '<input type="range" class="control-slider" id="tol-slider-' + i + '" min="0" max="100" value="' + Math.round(settings.tolerance * 100) + '" style="width:80px;"></label>' +
+      '<label style="font-size:0.8em;">Anti: <span id="anti-value-' + i + '">' + Math.round(settings.antiBias * 100) + '</span>%' +
+      '<input type="range" class="control-slider" id="anti-slider-' + i + '" min="0" max="100" value="' + Math.round(settings.antiBias * 100) + '" style="width:80px;"></label>';
+
+    container.appendChild(row);
+
+    (function (idx) {
+      document.getElementById('prop-slider-' + idx).addEventListener('input', function () {
+        groupSettings[idx].proportion = parseInt(this.value, 10) / 100;
+        document.getElementById('prop-value-' + idx).textContent = parseInt(this.value, 10);
+      });
+      document.getElementById('tol-slider-' + idx).addEventListener('input', function () {
+        groupSettings[idx].tolerance = parseInt(this.value, 10) / 100;
+        document.getElementById('tol-value-' + idx).textContent = parseInt(this.value, 10);
+      });
+      document.getElementById('anti-slider-' + idx).addEventListener('input', function () {
+        groupSettings[idx].antiBias = parseInt(this.value, 10) / 100;
+        document.getElementById('anti-value-' + idx).textContent = parseInt(this.value, 10);
+      });
+    })(i);
+  }
+}
+
+function updateReadouts() {
+  const stepEl = document.getElementById('step-count');
+  const unhappyEl = document.getElementById('unhappy-count');
+  const segEl = document.getElementById('segregation-value');
+  const statusEl = document.getElementById('status-text');
+
+  if (stepEl) stepEl.textContent = 'Step: ' + stepCount;
+
+  if (unhappyEl) {
+    let unhappyCount = 0;
+    let agentCount = 0;
+    for (let i = 0; i < cells.length; i++) {
+      if (cells[i] !== EMPTY) {
+        agentCount++;
+        if (unhappySet && unhappySet[i]) unhappyCount++;
+      }
+    }
+    const pct = agentCount > 0 ? Math.round(100 * unhappyCount / agentCount) : 0;
+    unhappyEl.textContent = 'Unhappy: ' + pct + '%';
+  }
+
+  if (segEl) {
+    const seg = segregationHistory.length > 0
+      ? segregationHistory[segregationHistory.length - 1]
+      : measureSegregation();
+    segEl.textContent = 'Segregation: ' + Math.round(seg * 100) + '%';
+  }
+
+  if (statusEl) statusEl.textContent = statusMessage;
+}
