@@ -158,19 +158,17 @@ function isUnhappy(x, y, groupId) {
 
 function syncGrid() {
   computeUnhappySet();
-  for (let y = 0; y < gridSize; y++) {
-    for (let x = 0; x < gridSize; x++) {
-      const idx = y * gridSize + x;
-      const groupId = cells[idx];
-      if (groupId === EMPTY) {
-        grid.setCell(x, y, palette.get('empty'));
-      } else {
-        const g = GROUPS[groupId - 1];
-        const glyphName = unhappySet[idx] ? g.name + '_dim' : g.name;
-        grid.setCell(x, y, palette.get(glyphName));
-      }
+  grid.init(function (cell) {
+    const idx = cell.y * gridSize + cell.x;
+    const groupId = cells[idx];
+    if (groupId === EMPTY) {
+      cell.value = palette.get('empty');
+    } else {
+      const g = GROUPS[groupId - 1];
+      const glyphName = unhappySet[idx] ? g.name + '_dim' : g.name;
+      cell.value = palette.get(glyphName);
     }
-  }
+  });
 }
 
 // === Simulation logic ===
