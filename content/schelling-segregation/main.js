@@ -10,7 +10,7 @@ const GROUPS = [
   { id: 6, name: 'Troll',  glyph: 'T', fg: [45,  212, 191], bg: [0, 0, 0] },
 ];
 
-// Dimmed versions for unhappy agents (50% brightness)
+// Dimmed versions for unhappy agents (40% brightness)
 const DIMMED_GROUPS = GROUPS.map(g => ({
   ...g,
   fg: g.fg.map(c => Math.floor(c * 0.4)),
@@ -507,7 +507,6 @@ function resetSimulation() {
   lastUnhappyCount = -1;
   statusMessage = '';
   segregationHistory = [];
-  initGroupSettings();
   initCells();
   computeUnhappySet();
   const initialSeg = measureSegregation();
@@ -541,6 +540,7 @@ function fullReset() {
     CHAR_HEIGHT,
     'Courier New'
   ));
+  if (chartBuffer) chartBuffer.remove();
   chartBuffer = createGraphics(dims.adjustedWidth, CHART_HEIGHT);
 
   initGroupSettings();
@@ -600,6 +600,7 @@ function bindControls() {
   addGroupBtn.addEventListener('click', function () {
     if (activeGroupCount >= 6) return;
     activeGroupCount++;
+    initGroupSettings();
     resetSimulation();
     buildGroupControlsUI();
   });
@@ -607,6 +608,7 @@ function bindControls() {
   removeGroupBtn.addEventListener('click', function () {
     if (activeGroupCount <= 2) return;
     activeGroupCount--;
+    initGroupSettings();
     resetSimulation();
     buildGroupControlsUI();
   });
