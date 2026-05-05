@@ -60,7 +60,7 @@ function drawLayerInto(buf, layer, aOuter, palette) {
   const cosA = Math.cos(aOuter);
   const sinA = Math.sin(aOuter);
   buf.colorMode(HSL, 360, 100, 100, 1);
-  buf.strokeWeight(1);
+  buf.strokeWeight(layer.stroke_w);
   for (let i = 0; i < steps; i++) {
     const tNorm = i / steps;
     const t1 = tNorm * Math.PI * 2 * layer.revs;
@@ -108,7 +108,11 @@ function setup() {
     palette: [[30, 80, 65], [340, 60, 60], [200, 70, 55], [80, 60, 55]],
     layers: [
       { R: 60, r: 17, d: 40, revs: 17, offset: 25, band_count: 4, band_phase: 0, band_duty: 0.5,
-        palette_a: 0, palette_b: 1 },
+        palette_a: 0, palette_b: 1, stroke_w: 0.5 },
+      { R: 75, r: 26, d: 30, revs: 13, offset: 10, band_count: 3, band_phase: 0, band_duty: 0.6,
+        palette_a: 2, palette_b: 0, stroke_w: 1.5 },
+      { R: 50, r: 11, d: 35, revs: 11, offset: 0,  band_count: 2, band_phase: 0, band_duty: 0.7,
+        palette_a: 3, palette_b: 1, stroke_w: 2.5 },
     ],
   });
 }
