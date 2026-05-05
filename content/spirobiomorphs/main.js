@@ -34,12 +34,15 @@ function isInBand(dist, layer) {
   return local <= period * layer.band_duty;
 }
 
-// `layer` shape (this task): { R, r, d, revs, band_count, band_phase, band_duty }
-function drawLayerStatic(buf, layer) {
+// Renders one layer, rotated by aOuter and translated by `offset` along x.
+// (The outer rotation is applied to the whole composition; offset places
+// the layer at radius `offset` from origin before stamping.)
+function drawLayerInto(buf, layer, aOuter) {
   if (layer.r >= layer.R) return;
-  const steps = 1500;
+  const steps = 1200;
+  const cosA = Math.cos(aOuter);
+  const sinA = Math.sin(aOuter);
   buf.stroke(255, 200);
-  buf.noFill();
   buf.strokeWeight(1);
   for (let i = 0; i < steps; i++) {
     const t1 = (i / steps) * Math.PI * 2 * layer.revs;
@@ -47,8 +50,24 @@ function drawLayerStatic(buf, layer) {
     const p1 = hypoPoint(t1, layer.R, layer.r, layer.d);
     const p2 = hypoPoint(t2, layer.R, layer.r, layer.d);
     const midDist = Math.hypot((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
-    if (isInBand(midDist, layer)) {
-      buf.line(p1.x, p1.y, p2.x, p2.y);
+    if (!isInBand(midDist, layer)) continue;
+    // shift by offset along local +x, then rotate by aOuter
+    const x1 = p1.x + layer.offset, y1 = p1.y;
+    const x2 = p2.x + layer.offset, y2 = p2.y;
+    const rx1 = x1 * cosA - y1 * sinA;
+    const ry1 = x1 * sinA + y1 * cosA;
+    const rx2 = x2 * cosA - y2 * sinA;
+    const ry2 = x2 * sinA + y2 * cosA;
+    buf.line(rx1, ry1, rx2, ry2);
+  }
+}
+
+// `specimen` (this task): { k_outer, layers: [...] }
+function drawSpecimenStatic(buf, specimen) {
+  for (let outer = 0; outer < specimen.k_outer; outer++) {
+    const aOuter = (outer / specimen.k_outer) * Math.PI * 2;
+    for (const layer of specimen.layers) {
+      drawLayerInto(buf, layer, aOuter);
     }
   }
 }
@@ -63,9 +82,11 @@ function setup() {
   testBuf = createGraphics(280, 280);
   testBuf.translate(140, 140);
   testBuf.background(BG);
-  drawLayerStatic(testBuf, {
-    R: 70, r: 21, d: 50, revs: 7,
-    band_count: 4, band_phase: 0, band_duty: 0.5,
+  drawSpecimenStatic(testBuf, {
+    k_outer: 6,
+    layers: [
+      { R: 60, r: 17, d: 40, revs: 17, offset: 25, band_count: 4, band_phase: 0, band_duty: 0.5 },
+    ],
   });
 }
 
