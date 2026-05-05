@@ -330,6 +330,7 @@ let historyForward = []; // entries undone by Back, available for Forward
 let parentGenome = null;
 let parentSeed = null;
 let mutationsPerOffspring = 1;
+let penSpeed = 1.0;
 
 function rebuildChildren() {
   const rng = makeRng(parentSeed);
@@ -376,7 +377,13 @@ function goForward() {
   commitParent(next.genome, next.seed);
 }
 
-function updateStatus() { /* implemented in a later task */ }
+function updateStatus() {
+  const el = document.getElementById('status-line');
+  if (!el || !parentGenome) return;
+  el.textContent = `Generation: ${history.length}  ·  Layers: ${parentGenome.n_layers}  ·  k=${parentGenome.k_outer}  ·  fingerprint: ${fingerprint(parentGenome)}`;
+  document.getElementById('back-btn').disabled = history.length === 0;
+  document.getElementById('forward-btn').disabled = historyForward.length === 0;
+}
 
 function buildControls() {
   const buttonRow = document.getElementById('control-row-buttons');
@@ -390,9 +397,49 @@ function buildControls() {
     buttonRow.appendChild(b);
     return b;
   };
-  mkBtn('◀ Back',    goBack,    'back-btn');
-  mkBtn('Forward ▶', goForward, 'forward-btn');
+  mkBtn('◀ Back',         goBack,                   'back-btn');
+  mkBtn('Forward ▶',      goForward,                'forward-btn');
+  mkBtn('Reset',          () => doReset(),          'reset-btn');
+  mkBtn('Random',         () => doRandom(),         'random-btn');
+  mkBtn('💾 Save Parent', () => savePinned(),       'save-btn');
+
+  const sliderRow = document.getElementById('control-row-sliders');
+  sliderRow.innerHTML = `
+    <label>Mutations per offspring: <span id="mut-value">1</span></label>
+    <input type="range" id="mut-slider" class="control-slider" min="1" max="5" value="1">
+    <label>Pen speed: <span id="speed-value">1.0×</span></label>
+    <input type="range" id="speed-slider" class="control-slider" min="25" max="400" value="100">
+  `;
+  const mutSlider = document.getElementById('mut-slider');
+  const mutValue  = document.getElementById('mut-value');
+  mutSlider.addEventListener('input', () => {
+    mutationsPerOffspring = parseInt(mutSlider.value, 10);
+    mutValue.textContent = mutationsPerOffspring;
+    rebuildChildren();
+  });
+  const speedSlider = document.getElementById('speed-slider');
+  const speedValue  = document.getElementById('speed-value');
+  speedSlider.addEventListener('input', () => {
+    penSpeed = parseInt(speedSlider.value, 10) / 100;
+    speedValue.textContent = penSpeed.toFixed(2) + '×';
+  });
 }
+
+function doReset() {
+  history.length = 0;
+  historyForward.length = 0;
+  parentGenome = null;
+  parentSeed = null;
+  const seedRng = makeRng((Math.random() * 0xffffffff) >>> 0);
+  setParent(curatedSeedGenome(seedRng));
+}
+
+function doRandom() {
+  const seedRng = makeRng((Math.random() * 0xffffffff) >>> 0);
+  setParent(randomGenome(seedRng));
+}
+
+function savePinned() { /* implemented in next task */ }
 
 function cellAt(mx, my) {
   for (let row = 0; row < GRID; row++) {
@@ -468,7 +515,7 @@ function draw() {
   for (let i = 0; i < 9; i++) {
     const col = i % GRID;
     const row = Math.floor(i / GRID);
-    specimens[i].step(dt, 1.0);
+    specimens[i].step(dt, penSpeed);
     const pos = cellPosition(col, row);
     specimens[i].render(pos.x, pos.y);
     // parent indicator
