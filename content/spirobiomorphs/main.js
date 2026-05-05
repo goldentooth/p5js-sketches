@@ -58,52 +58,58 @@ function sampleGradient(palette, a, b, tNorm) {
 // `specimen` is the genome (palette, k_outer, layers). `instance.layerSpeed[i]`
 // is a fixed multiplier so different layers don't all march in lockstep.
 
-function makeInstance(specimen) {
-  return {
-    specimen,
-    t: specimen.layers.map(() => 0),
-    layerSpeed: specimen.layers.map((_, i) => 1 + i * 0.13), // slight desync
-  };
-}
-
 const FADE_ALPHA = 12; // 0..255, lower = longer trail
 const SEGMENTS_PER_FULL_REV = 240;
 
-function stepInstance(instance, dt, penSpeed, buf) {
-  // 1) Fade overlay — must be in BLEND mode so destination is partially erased.
-  buf.push();
-  buf.resetMatrix();
-  buf.blendMode(BLEND);
-  buf.noStroke();
-  buf.fill(0, 0, 0, FADE_ALPHA);
-  buf.rect(0, 0, buf.width, buf.height);
-  buf.pop();
+// === Specimen ===
+const CELL_PX = 280;
 
-  // 2) Stroke new segments in ADD mode.
-  buf.blendMode(ADD);
-  buf.colorMode(HSL, 360, 100, 100, 1);
-  const { specimen } = instance;
-  for (let li = 0; li < specimen.layers.length; li++) {
-    const layer = specimen.layers[li];
-    if (layer.r >= layer.R) continue;
-    const totalT = layer.revs * Math.PI * 2;
-    const tPrev = instance.t[li];
-    let tNext = tPrev + dt * penSpeed * instance.layerSpeed[li] * 4;
-    // Number of mini-segments to stroke this frame, proportional to angle covered.
-    const segCount = Math.max(1, Math.ceil((tNext - tPrev) / (Math.PI * 2) * SEGMENTS_PER_FULL_REV));
-    for (let s = 0; s < segCount; s++) {
-      const tA = tPrev + (s / segCount) * (tNext - tPrev);
-      const tB = tPrev + ((s + 1) / segCount) * (tNext - tPrev);
-      // wrap each end independently to [0, totalT]
-      const wA = ((tA % totalT) + totalT) % totalT;
-      const wB = ((tB % totalT) + totalT) % totalT;
-      // skip the wrap-around segment (don't draw a chord across the wrap)
-      if (wB < wA) continue;
-      strokeSegment(buf, layer, specimen, wA, wB);
-    }
-    instance.t[li] = tNext > totalT ? tNext - totalT : tNext;
+class Specimen {
+  constructor(genome) {
+    this.genome = genome;
+    this.buffer = createGraphics(CELL_PX, CELL_PX);
+    this.buffer.background(BG);
+    this.t = genome.layers.map(() => 0);
+    this.layerSpeed = genome.layers.map((_, i) => 1 + i * 0.13);
   }
-  buf.blendMode(BLEND);
+  resetBuffer() {
+    this.buffer.background(BG);
+    this.t = this.genome.layers.map(() => 0);
+  }
+  step(dt, penSpeed) {
+    const buf = this.buffer;
+    buf.push();
+    buf.resetMatrix();
+    buf.blendMode(BLEND);
+    buf.noStroke();
+    buf.fill(0, 0, 0, FADE_ALPHA);
+    buf.rect(0, 0, buf.width, buf.height);
+    buf.pop();
+    buf.blendMode(ADD);
+    buf.colorMode(HSL, 360, 100, 100, 1);
+    const g = this.genome;
+    for (let li = 0; li < g.layers.length; li++) {
+      const layer = g.layers[li];
+      if (layer.r >= layer.R) continue;
+      const totalT = layer.revs * Math.PI * 2;
+      const tPrev = this.t[li];
+      let tNext = tPrev + dt * penSpeed * this.layerSpeed[li] * 4;
+      const segCount = Math.max(1, Math.ceil((tNext - tPrev) / (Math.PI * 2) * SEGMENTS_PER_FULL_REV));
+      for (let s = 0; s < segCount; s++) {
+        const tA = tPrev + (s / segCount) * (tNext - tPrev);
+        const tB = tPrev + ((s + 1) / segCount) * (tNext - tPrev);
+        const wA = ((tA % totalT) + totalT) % totalT;
+        const wB = ((tB % totalT) + totalT) % totalT;
+        if (wB < wA) continue;
+        strokeSegment(buf, layer, g, wA, wB);
+      }
+      this.t[li] = tNext > totalT ? tNext - totalT : tNext;
+    }
+    buf.blendMode(BLEND);
+  }
+  render(x, y) {
+    image(this.buffer, x, y);
+  }
 }
 
 function strokeSegment(buf, layer, specimen, tA, tB) {
@@ -130,37 +136,62 @@ function strokeSegment(buf, layer, specimen, tA, tB) {
   }
 }
 
-// === Sketch ===
-let testBuf;
-let testInstance;
+const GRID = 3;
+const GUTTER = 30;
+const GRID_ORIGIN = (CANVAS_W - GRID * CELL_PX - (GRID - 1) * GUTTER) / 2;
+
+function cellPosition(col, row) {
+  return {
+    x: GRID_ORIGIN + col * (CELL_PX + GUTTER),
+    y: GRID_ORIGIN + row * (CELL_PX + GUTTER),
+  };
+}
+
+// Produces a hand-written placeholder genome with mild variation per cell.
+// Real random/curated/mutate land in the next task — this is just so the grid
+// shows 9 distinct things for verification.
+function placeholderGenome(seed) {
+  return {
+    k_outer: 4 + (seed % 5),
+    palette: [[30, 80, 65], [340, 60, 60], [200, 70, 55], [80, 60, 55]],
+    layers: [
+      { R: 60 + (seed * 3) % 30, r: 17, d: 40, revs: 11 + (seed % 7), offset: 25,
+        band_count: 3, band_phase: 0, band_duty: 0.5,
+        palette_a: seed % 4, palette_b: (seed + 1) % 4, stroke_w: 1 },
+    ],
+  };
+}
+
+let specimens = [];
 let lastFrameMs = 0;
 
 function setup() {
   const c = createCanvas(CANVAS_W, CANVAS_H);
   c.parent('sketch-holder');
   pixelDensity(1);
-  testBuf = createGraphics(280, 280);
-  testBuf.background(BG);
-  testInstance = makeInstance({
-    k_outer: 6,
-    palette: [[30, 80, 65], [340, 60, 60], [200, 70, 55], [80, 60, 55]],
-    layers: [
-      { R: 60, r: 17, d: 40, revs: 17, offset: 25, band_count: 4, band_phase: 0, band_duty: 0.5,
-        palette_a: 0, palette_b: 1, stroke_w: 0.5 },
-      { R: 75, r: 26, d: 30, revs: 13, offset: 10, band_count: 3, band_phase: 0, band_duty: 0.6,
-        palette_a: 2, palette_b: 0, stroke_w: 1.5 },
-      { R: 50, r: 11, d: 35, revs: 11, offset: 0,  band_count: 2, band_phase: 0, band_duty: 0.7,
-        palette_a: 3, palette_b: 1, stroke_w: 2.5 },
-    ],
-  });
+  for (let i = 0; i < 9; i++) {
+    specimens.push(new Specimen(placeholderGenome(i)));
+  }
   lastFrameMs = millis();
 }
 
 function draw() {
   background(BG);
   const now = millis();
-  const dt = Math.min(0.1, (now - lastFrameMs) / 1000); // clamp first-frame spike
+  const dt = Math.min(0.1, (now - lastFrameMs) / 1000);
   lastFrameMs = now;
-  stepInstance(testInstance, dt, 1.0, testBuf);
-  image(testBuf, CANVAS_W / 2 - 140, CANVAS_H / 2 - 140);
+  for (let i = 0; i < 9; i++) {
+    const col = i % GRID;
+    const row = Math.floor(i / GRID);
+    specimens[i].step(dt, 1.0);
+    const pos = cellPosition(col, row);
+    specimens[i].render(pos.x, pos.y);
+    // parent indicator
+    if (col === 1 && row === 1) {
+      noFill();
+      stroke(180, 180, 180, 200);
+      strokeWeight(2);
+      rect(pos.x - 2, pos.y - 2, CELL_PX + 4, CELL_PX + 4);
+    }
+  }
 }
