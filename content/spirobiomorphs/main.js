@@ -34,24 +34,43 @@ function isInBand(dist, layer) {
   return local <= period * layer.band_duty;
 }
 
+// === Palette ===
+// Palette is an array of 4 [H, S, L] triples. H in [0, 360), S/L in [0, 100].
+// Layer gradient samples between palette[layer.palette_a] and palette[layer.palette_b]
+// linearly along curve parameter t (i / steps).
+function sampleGradient(palette, a, b, tNorm) {
+  const [h1, s1, l1] = palette[a];
+  const [h2, s2, l2] = palette[b];
+  // shortest hue path
+  let dh = h2 - h1;
+  if (dh > 180) dh -= 360;
+  if (dh < -180) dh += 360;
+  const h = (h1 + dh * tNorm + 360) % 360;
+  const s = s1 + (s2 - s1) * tNorm;
+  const l = l1 + (l2 - l1) * tNorm;
+  return [h, s, l];
+}
+
 // Renders one layer, rotated by aOuter and translated by `offset` along x.
 // (The outer rotation is applied to the whole composition; offset places
 // the layer at radius `offset` from origin before stamping.)
-function drawLayerInto(buf, layer, aOuter) {
+function drawLayerInto(buf, layer, aOuter, palette) {
   if (layer.r >= layer.R) return;
   const steps = 1200;
   const cosA = Math.cos(aOuter);
   const sinA = Math.sin(aOuter);
-  buf.stroke(255, 200);
+  buf.colorMode(HSL, 360, 100, 100, 1);
   buf.strokeWeight(1);
   for (let i = 0; i < steps; i++) {
-    const t1 = (i / steps) * Math.PI * 2 * layer.revs;
+    const tNorm = i / steps;
+    const t1 = tNorm * Math.PI * 2 * layer.revs;
     const t2 = ((i + 1) / steps) * Math.PI * 2 * layer.revs;
     const p1 = hypoPoint(t1, layer.R, layer.r, layer.d);
     const p2 = hypoPoint(t2, layer.R, layer.r, layer.d);
     const midDist = Math.hypot((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
     if (!isInBand(midDist, layer)) continue;
-    // shift by offset along local +x, then rotate by aOuter
+    const [h, s, l] = sampleGradient(palette, layer.palette_a, layer.palette_b, tNorm);
+    buf.stroke(h, s, l, 0.6);
     const x1 = p1.x + layer.offset, y1 = p1.y;
     const x2 = p2.x + layer.offset, y2 = p2.y;
     const rx1 = x1 * cosA - y1 * sinA;
@@ -62,14 +81,16 @@ function drawLayerInto(buf, layer, aOuter) {
   }
 }
 
-// `specimen` (this task): { k_outer, layers: [...] }
+// `specimen` (this task): { k_outer, palette, layers: [...] }
 function drawSpecimenStatic(buf, specimen) {
+  buf.blendMode(ADD);
   for (let outer = 0; outer < specimen.k_outer; outer++) {
     const aOuter = (outer / specimen.k_outer) * Math.PI * 2;
     for (const layer of specimen.layers) {
-      drawLayerInto(buf, layer, aOuter);
+      drawLayerInto(buf, layer, aOuter, specimen.palette);
     }
   }
+  buf.blendMode(BLEND);
 }
 
 // === Sketch ===
@@ -84,8 +105,10 @@ function setup() {
   testBuf.background(BG);
   drawSpecimenStatic(testBuf, {
     k_outer: 6,
+    palette: [[30, 80, 65], [340, 60, 60], [200, 70, 55], [80, 60, 55]],
     layers: [
-      { R: 60, r: 17, d: 40, revs: 17, offset: 25, band_count: 4, band_phase: 0, band_duty: 0.5 },
+      { R: 60, r: 17, d: 40, revs: 17, offset: 25, band_count: 4, band_phase: 0, band_duty: 0.5,
+        palette_a: 0, palette_b: 1 },
     ],
   });
 }
