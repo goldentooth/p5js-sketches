@@ -355,19 +355,27 @@ function commitParent(genome, seed) {
   parentSeed = seed;
   specimens[4] = new Specimen(genome);
   rebuildChildren();
-  updateStatus(); // defined in a later task; safe to call (will be a no-op if undefined)
+  updateStatus();
+}
+
+function applyMutationCount(n) {
+  mutationsPerOffspring = n;
+  const sl = document.getElementById('mut-slider');
+  const lbl = document.getElementById('mut-value');
+  if (sl) sl.value = String(n);
+  if (lbl) lbl.textContent = String(n);
 }
 
 function setParent(genome) {
   // brand-new parent (initial, reset, random) — clears forward history
-  if (parentGenome) history.push({ genome: parentGenome, seed: parentSeed });
+  if (parentGenome) history.push({ genome: parentGenome, seed: parentSeed, mutationCount: mutationsPerOffspring });
   historyForward.length = 0;
   commitParent(genome, (Math.random() * 0xffffffff) >>> 0);
 }
 
 function breedFromCell(cellIdx) {
   if (cellIdx === 4) return;
-  history.push({ genome: parentGenome, seed: parentSeed });
+  history.push({ genome: parentGenome, seed: parentSeed, mutationCount: mutationsPerOffspring });
   historyForward.length = 0;
   const newParentGenome = specimens[cellIdx].genome;
   startTransition(cellIdx);
@@ -376,15 +384,17 @@ function breedFromCell(cellIdx) {
 
 function goBack() {
   if (history.length === 0) return;
-  historyForward.push({ genome: parentGenome, seed: parentSeed });
+  historyForward.push({ genome: parentGenome, seed: parentSeed, mutationCount: mutationsPerOffspring });
   const prev = history.pop();
+  applyMutationCount(prev.mutationCount ?? mutationsPerOffspring);
   commitParent(prev.genome, prev.seed);
 }
 
 function goForward() {
   if (historyForward.length === 0) return;
-  history.push({ genome: parentGenome, seed: parentSeed });
+  history.push({ genome: parentGenome, seed: parentSeed, mutationCount: mutationsPerOffspring });
   const next = historyForward.pop();
+  applyMutationCount(next.mutationCount ?? mutationsPerOffspring);
   commitParent(next.genome, next.seed);
 }
 
