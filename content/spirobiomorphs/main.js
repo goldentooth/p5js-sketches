@@ -322,8 +322,13 @@ class Specimen {
 }
 
 // === Breeding ===
-let parentSeed = null;       // RNG seed used to generate the current 8 children
+// History entry: { genome, seed }. The seed is the RNG used to mutate
+// children — storing it makes navigation deterministic (same parent +
+// same seed → same children).
+let history = [];      // committed past parents (oldest at index 0)
+let historyForward = []; // entries undone by Back, available for Forward
 let parentGenome = null;
+let parentSeed = null;
 let mutationsPerOffspring = 1;
 
 function rebuildChildren() {
@@ -334,16 +339,59 @@ function rebuildChildren() {
   }
 }
 
-function setParent(genome) {
+function commitParent(genome, seed) {
   parentGenome = genome;
-  parentSeed = (Math.random() * 0xffffffff) >>> 0;
-  specimens[4] = new Specimen(parentGenome);
+  parentSeed = seed;
+  specimens[4] = new Specimen(genome);
   rebuildChildren();
+  updateStatus(); // defined in a later task; safe to call (will be a no-op if undefined)
+}
+
+function setParent(genome) {
+  // brand-new parent (initial, reset, random) — clears forward history
+  if (parentGenome) history.push({ genome: parentGenome, seed: parentSeed });
+  historyForward.length = 0;
+  commitParent(genome, (Math.random() * 0xffffffff) >>> 0);
 }
 
 function breedFromCell(cellIdx) {
-  if (cellIdx === 4) return; // clicking parent is no-op
-  setParent(specimens[cellIdx].genome);
+  if (cellIdx === 4) return;
+  // push current parent to history before changing
+  history.push({ genome: parentGenome, seed: parentSeed });
+  historyForward.length = 0;
+  commitParent(specimens[cellIdx].genome, (Math.random() * 0xffffffff) >>> 0);
+}
+
+function goBack() {
+  if (history.length === 0) return;
+  historyForward.push({ genome: parentGenome, seed: parentSeed });
+  const prev = history.pop();
+  commitParent(prev.genome, prev.seed);
+}
+
+function goForward() {
+  if (historyForward.length === 0) return;
+  history.push({ genome: parentGenome, seed: parentSeed });
+  const next = historyForward.pop();
+  commitParent(next.genome, next.seed);
+}
+
+function updateStatus() { /* implemented in a later task */ }
+
+function buildControls() {
+  const buttonRow = document.getElementById('control-row-buttons');
+  buttonRow.innerHTML = '';
+  const mkBtn = (label, onClick, id) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.className = 'control-button';
+    b.id = id;
+    b.addEventListener('click', onClick);
+    buttonRow.appendChild(b);
+    return b;
+  };
+  mkBtn('◀ Back',    goBack,    'back-btn');
+  mkBtn('Forward ▶', goForward, 'forward-btn');
 }
 
 function cellAt(mx, my) {
@@ -409,6 +457,7 @@ function setup() {
   const seedRng = makeRng((Math.random() * 0xffffffff) >>> 0);
   setParent(curatedSeedGenome(seedRng));
   lastFrameMs = millis();
+  buildControls();
 }
 
 function draw() {
