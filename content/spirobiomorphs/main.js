@@ -439,7 +439,85 @@ function doRandom() {
   setParent(randomGenome(seedRng));
 }
 
-function savePinned() { /* implemented in next task */ }
+// === Saved gallery ===
+const STORAGE_KEY = 'spirobiomorphs:saved';
+const THUMB_PX = 120;
+
+function loadSaved() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
+function persistSaved(arr) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); } catch {}
+}
+
+function savePinned() {
+  if (!parentGenome) return;
+  const arr = loadSaved();
+  arr.push(JSON.parse(JSON.stringify(parentGenome)));
+  persistSaved(arr);
+  renderSavedStrip();
+}
+
+// Render a static thumbnail by stepping a Specimen long enough that the
+// pen has traced the full path at least once for every layer.
+function renderThumbnail(genome) {
+  const tmpSpecimen = new Specimen(genome);
+  // Discard the default 280x280 buffer; replace with a thumb-sized one.
+  tmpSpecimen.buffer.remove();
+  tmpSpecimen.buffer = createGraphics(THUMB_PX, THUMB_PX);
+  tmpSpecimen.buffer.background(BG);
+  // Run enough simulated frames so each layer completes at least one pass.
+  // Using a large dt per step compresses time. ~120 steps at dt=0.1 = sim 12s.
+  for (let i = 0; i < 120; i++) tmpSpecimen.step(0.1, 1.0);
+  const url = tmpSpecimen.buffer.canvas.toDataURL('image/png');
+  tmpSpecimen.buffer.remove();
+  return url;
+}
+
+function renderSavedStrip() {
+  const strip = document.getElementById('saved-strip');
+  strip.innerHTML = '';
+  const arr = loadSaved();
+  arr.forEach((genome, idx) => {
+    const wrap = document.createElement('div');
+    wrap.style.position = 'relative';
+    wrap.style.cursor = 'pointer';
+    wrap.style.flex = '0 0 auto';
+    wrap.title = `fingerprint: ${fingerprint(genome)}`;
+    const img = document.createElement('img');
+    img.src = renderThumbnail(genome);
+    img.style.width = THUMB_PX + 'px';
+    img.style.height = THUMB_PX + 'px';
+    img.style.borderRadius = '6px';
+    img.style.display = 'block';
+    img.addEventListener('click', () => setParent(JSON.parse(JSON.stringify(genome))));
+    const xBtn = document.createElement('button');
+    xBtn.textContent = '×';
+    xBtn.style.position = 'absolute';
+    xBtn.style.top = '4px';
+    xBtn.style.right = '4px';
+    xBtn.style.opacity = '0';
+    xBtn.style.transition = 'opacity 0.2s';
+    xBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const updated = loadSaved();
+      updated.splice(idx, 1);
+      persistSaved(updated);
+      renderSavedStrip();
+    });
+    wrap.addEventListener('mouseenter', () => xBtn.style.opacity = '1');
+    wrap.addEventListener('mouseleave', () => xBtn.style.opacity = '0');
+    wrap.appendChild(img);
+    wrap.appendChild(xBtn);
+    strip.appendChild(wrap);
+  });
+}
 
 function cellAt(mx, my) {
   for (let row = 0; row < GRID; row++) {
@@ -505,6 +583,7 @@ function setup() {
   setParent(curatedSeedGenome(seedRng));
   lastFrameMs = millis();
   buildControls();
+  renderSavedStrip();
 }
 
 function draw() {
