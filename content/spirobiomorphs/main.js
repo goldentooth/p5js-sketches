@@ -30,7 +30,8 @@ function layerMaxRadius(layer) {
 function isInBand(dist, layer) {
   const maxR = layerMaxRadius(layer);
   const period = maxR / layer.band_count;
-  const local = ((dist - layer.band_phase) % period + period) % period;
+  const phase = layer.band_phase * period;
+  const local = ((dist - phase) % period + period) % period;
   return local <= period * layer.band_duty;
 }
 
@@ -49,6 +50,214 @@ function sampleGradient(palette, a, b, tNorm) {
   const s = s1 + (s2 - s1) * tNorm;
   const l = l1 + (l2 - l1) * tNorm;
   return [h, s, l];
+}
+
+// === RNG ===
+// Seeded RNG (mulberry32) so breeding history is reproducible.
+function makeRng(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function rngInt(rng, lo, hi) { return Math.floor(rng() * (hi - lo + 1)) + lo; }
+function rngFloat(rng, lo, hi) { return rng() * (hi - lo) + lo; }
+function rngPick(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }
+function rngSign(rng) { return rng() < 0.5 ? -1 : 1; }
+
+// === Gene metadata ===
+// type: 'int' | 'qfloat' | 'cfloat' (continuous float)
+// range: [min, max] inclusive
+// step: amount per ±1 mutation (defined for qfloat/int; cfloat uses 5% of range)
+const SPECIMEN_GENES = [
+  { name: 'k_outer',  type: 'int', range: [1, 12] },
+  { name: 'n_layers', type: 'int', range: [1, 5] },
+];
+// palette: 4 slots × (H, S, L). Treated as a flat list of 12 cfloat genes for mutation.
+const PALETTE_SLOTS = 4;
+const PALETTE_GENE_DEFS = [
+  { name: 'H', type: 'cfloat', range: [0, 360] },
+  { name: 'S', type: 'cfloat', range: [0, 100] },
+  { name: 'L', type: 'cfloat', range: [0, 100] },
+];
+
+const LAYER_GENES = [
+  { name: 'R',          type: 'int',    range: [20, 120] },
+  { name: 'r',          type: 'int',    range: [5, 60]   },
+  { name: 'd',          type: 'int',    range: [1, 80]   },
+  { name: 'revs',       type: 'int',    range: [1, 30]   },
+  { name: 'offset',     type: 'cfloat', range: [0, 60]   },
+  { name: 'band_count', type: 'int',    range: [1, 8]    },
+  { name: 'band_phase', type: 'cfloat', range: [0, 1]    }, // normalized 0..1, multiplied by band period at render
+  { name: 'band_duty',  type: 'qfloat', range: [0.1, 0.9], step: 0.1 },
+  { name: 'palette_a',  type: 'int',    range: [0, 3]    },
+  { name: 'palette_b',  type: 'int',    range: [0, 3]    },
+  { name: 'stroke_w',   type: 'qfloat', range: [0.5, 4.0], step: 0.5 },
+];
+
+// === Genome ops ===
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function randomGenome(rng) {
+  const palette = [];
+  for (let i = 0; i < PALETTE_SLOTS; i++) {
+    palette.push([
+      rngFloat(rng, 0, 360),
+      rngFloat(rng, 30, 90),
+      rngFloat(rng, 30, 75),
+    ]);
+  }
+  const n = rngInt(rng, 1, 5);
+  const layers = [];
+  for (let i = 0; i < n; i++) layers.push(randomLayer(rng));
+  return {
+    k_outer: rngInt(rng, 1, 12),
+    n_layers: n,
+    palette,
+    layers,
+  };
+}
+
+function randomLayer(rng) {
+  const layer = {};
+  for (const g of LAYER_GENES) {
+    if (g.type === 'int') layer[g.name] = rngInt(rng, g.range[0], g.range[1]);
+    else if (g.type === 'qfloat') {
+      const steps = Math.round((g.range[1] - g.range[0]) / g.step);
+      layer[g.name] = g.range[0] + rngInt(rng, 0, steps) * g.step;
+    } else {
+      layer[g.name] = rngFloat(rng, g.range[0], g.range[1]);
+    }
+  }
+  // sanity: ensure r < R (otherwise layer renders nothing)
+  if (layer.r >= layer.R) layer.r = Math.max(5, layer.R - 5);
+  return layer;
+}
+
+// "Curated" seed: tighter ranges so the initial parent is plausible, not noise.
+function curatedSeedGenome(rng) {
+  const palette = [];
+  for (let i = 0; i < PALETTE_SLOTS; i++) {
+    palette.push([
+      rngFloat(rng, 0, 360),
+      rngFloat(rng, 50, 80),
+      rngFloat(rng, 45, 65),
+    ]);
+  }
+  const n = rngInt(rng, 2, 3);
+  const layers = [];
+  for (let i = 0; i < n; i++) {
+    layers.push({
+      R: rngInt(rng, 50, 90),
+      r: rngInt(rng, 12, 30),
+      d: rngInt(rng, 25, 55),
+      revs: rngInt(rng, 7, 17),
+      offset: rngFloat(rng, 0, 30),
+      band_count: rngInt(rng, 2, 5),
+      band_phase: rngFloat(rng, 0, 1),
+      band_duty: 0.5,
+      palette_a: rngInt(rng, 0, 3),
+      palette_b: rngInt(rng, 0, 3),
+      stroke_w: 1.0,
+    });
+  }
+  return { k_outer: rngInt(rng, 4, 8), n_layers: n, palette, layers };
+}
+
+// Returns a flat list of {scope, layerIdx, name, geneDef} entries that mutation
+// picks from uniformly. Only ACTIVE genes are listed (layers beyond n_layers
+// are excluded).
+function activeGeneList(genome) {
+  const list = [];
+  for (const g of SPECIMEN_GENES) list.push({ scope: 'specimen', name: g.name, def: g });
+  for (let p = 0; p < PALETTE_SLOTS; p++) {
+    for (const g of PALETTE_GENE_DEFS) list.push({ scope: 'palette', slot: p, name: g.name, def: g });
+  }
+  for (let li = 0; li < genome.n_layers; li++) {
+    for (const g of LAYER_GENES) list.push({ scope: 'layer', layerIdx: li, name: g.name, def: g });
+  }
+  return list;
+}
+
+function mutateGene(genome, entry, rng) {
+  const { def, scope } = entry;
+  const sign = rngSign(rng);
+  if (scope === 'specimen') {
+    if (entry.name === 'n_layers') {
+      // special: ±1, with structural side effect
+      const cur = genome.n_layers;
+      const next = clamp(cur + sign, def.range[0], def.range[1]);
+      if (next > cur) {
+        // append a "neutral" layer (median of each gene's range)
+        const layer = {};
+        for (const lg of LAYER_GENES) {
+          if (lg.type === 'int') layer[lg.name] = Math.round((lg.range[0] + lg.range[1]) / 2);
+          else if (lg.type === 'qfloat') {
+            const steps = Math.round((lg.range[1] - lg.range[0]) / lg.step);
+            layer[lg.name] = lg.range[0] + Math.round(steps / 2) * lg.step;
+          } else layer[lg.name] = (lg.range[0] + lg.range[1]) / 2;
+        }
+        if (layer.r >= layer.R) layer.r = Math.max(5, layer.R - 5);
+        genome.layers.push(layer);
+      } else if (next < cur) {
+        genome.layers.pop();
+      }
+      genome.n_layers = next;
+      return;
+    }
+    genome[entry.name] = clamp(genome[entry.name] + sign, def.range[0], def.range[1]);
+    return;
+  }
+  if (scope === 'palette') {
+    const slot = genome.palette[entry.slot];
+    const idx = entry.name === 'H' ? 0 : entry.name === 'S' ? 1 : 2;
+    const step = (def.range[1] - def.range[0]) * 0.05;
+    if (entry.name === 'H') slot[idx] = (slot[idx] + sign * step + 360) % 360;
+    else slot[idx] = clamp(slot[idx] + sign * step, def.range[0], def.range[1]);
+    return;
+  }
+  if (scope === 'layer') {
+    const layer = genome.layers[entry.layerIdx];
+    if (def.type === 'int') {
+      layer[entry.name] = clamp(layer[entry.name] + sign, def.range[0], def.range[1]);
+      // keep r < R for renderability
+      if (entry.name === 'r' && layer.r >= layer.R) layer.r = layer.R - 1;
+    } else if (def.type === 'qfloat') {
+      layer[entry.name] = clamp(
+        Math.round((layer[entry.name] + sign * def.step) / def.step) * def.step,
+        def.range[0], def.range[1]
+      );
+    } else {
+      const step = (def.range[1] - def.range[0]) * 0.05;
+      layer[entry.name] = clamp(layer[entry.name] + sign * step, def.range[0], def.range[1]);
+    }
+  }
+}
+
+// Returns a deep copy of `parent` with N mutations applied using `rng`.
+function mutate(parent, n, rng) {
+  const child = JSON.parse(JSON.stringify(parent));
+  for (let i = 0; i < n; i++) {
+    const list = activeGeneList(child);
+    const entry = list[Math.floor(rng() * list.length)];
+    mutateGene(child, entry, rng);
+  }
+  return child;
+}
+
+// 32-bit FNV-1a hash → 4-char hex.
+function fingerprint(genome) {
+  const json = JSON.stringify(genome, (k, v) => typeof v === 'number' ? +v.toFixed(3) : v);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < json.length; i++) {
+    h ^= json.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return ((h >>> 0) & 0xffff).toString(16).padStart(4, '0');
 }
 
 // === Animated rendering ===
@@ -147,21 +356,6 @@ function cellPosition(col, row) {
   };
 }
 
-// Produces a hand-written placeholder genome with mild variation per cell.
-// Real random/curated/mutate land in the next task — this is just so the grid
-// shows 9 distinct things for verification.
-function placeholderGenome(seed) {
-  return {
-    k_outer: 4 + (seed % 5),
-    palette: [[30, 80, 65], [340, 60, 60], [200, 70, 55], [80, 60, 55]],
-    layers: [
-      { R: 60 + (seed * 3) % 30, r: 17, d: 40, revs: 11 + (seed % 7), offset: 25,
-        band_count: 3, band_phase: 0, band_duty: 0.5,
-        palette_a: seed % 4, palette_b: (seed + 1) % 4, stroke_w: 1 },
-    ],
-  };
-}
-
 let specimens = [];
 let lastFrameMs = 0;
 
@@ -169,9 +363,17 @@ function setup() {
   const c = createCanvas(CANVAS_W, CANVAS_H);
   c.parent('sketch-holder');
   pixelDensity(1);
+  const initialSeed = (Math.random() * 0xffffffff) >>> 0;
+  const seedRng = makeRng(initialSeed);
+  const parentGenome = curatedSeedGenome(seedRng);
+  const childRng = makeRng((initialSeed + 1) >>> 0);
+  const grid = new Array(9);
+  grid[4] = new Specimen(parentGenome);
   for (let i = 0; i < 9; i++) {
-    specimens.push(new Specimen(placeholderGenome(i)));
+    if (i === 4) continue;
+    grid[i] = new Specimen(mutate(parentGenome, 1, childRng));
   }
+  specimens = grid;
   lastFrameMs = millis();
 }
 
