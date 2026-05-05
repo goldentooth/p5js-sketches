@@ -331,6 +331,16 @@ let parentGenome = null;
 let parentSeed = null;
 let mutationsPerOffspring = 1;
 let penSpeed = 1.0;
+let transition = null; // { fromCol, fromRow, durationMs, elapsedMs }
+
+function startTransition(fromIdx) {
+  transition = {
+    fromCol: fromIdx % GRID,
+    fromRow: Math.floor(fromIdx / GRID),
+    durationMs: 300,
+    elapsedMs: 0,
+  };
+}
 
 function rebuildChildren() {
   const rng = makeRng(parentSeed);
@@ -357,10 +367,11 @@ function setParent(genome) {
 
 function breedFromCell(cellIdx) {
   if (cellIdx === 4) return;
-  // push current parent to history before changing
   history.push({ genome: parentGenome, seed: parentSeed });
   historyForward.length = 0;
-  commitParent(specimens[cellIdx].genome, (Math.random() * 0xffffffff) >>> 0);
+  const newParentGenome = specimens[cellIdx].genome;
+  startTransition(cellIdx);
+  commitParent(newParentGenome, (Math.random() * 0xffffffff) >>> 0);
 }
 
 function goBack() {
@@ -536,6 +547,29 @@ function mousePressed() {
   if (idx >= 0) breedFromCell(idx);
 }
 
+function keyPressed() {
+  // Numpad-layout grid mapping: 7 8 9 / 4 5 6 / 1 2 3
+  const numpadMap = { '7': 0, '8': 1, '9': 2, '4': 3, '5': 4, '6': 5, '1': 6, '2': 7, '3': 8 };
+  if (numpadMap[key] !== undefined) { breedFromCell(numpadMap[key]); return; }
+  if (key === 'z' || key === 'Z') { goBack(); return; }
+  if (key === 'x' || key === 'X') { goForward(); return; }
+  if (key === 'r' || key === 'R') { doReset(); return; }
+  if (key === 'n' || key === 'N') { doRandom(); return; }
+  if (key === 's' || key === 'S') { savePinned(); return; }
+  if (key === '+' || key === '=') {
+    const sl = document.getElementById('mut-slider');
+    sl.value = Math.min(5, parseInt(sl.value, 10) + 1);
+    sl.dispatchEvent(new Event('input'));
+    return;
+  }
+  if (key === '-' || key === '_') {
+    const sl = document.getElementById('mut-slider');
+    sl.value = Math.max(1, parseInt(sl.value, 10) - 1);
+    sl.dispatchEvent(new Event('input'));
+    return;
+  }
+}
+
 function strokeSegment(buf, layer, specimen, tA, tB) {
   const totalT = layer.revs * Math.PI * 2;
   const tNormA = tA / totalT;
@@ -591,18 +625,45 @@ function draw() {
   const now = millis();
   const dt = Math.min(0.1, (now - lastFrameMs) / 1000);
   lastFrameMs = now;
+  if (transition) {
+    transition.elapsedMs += dt * 1000;
+    if (transition.elapsedMs >= transition.durationMs) transition = null;
+  }
   for (let i = 0; i < 9; i++) {
     const col = i % GRID;
     const row = Math.floor(i / GRID);
     specimens[i].step(dt, penSpeed);
-    const pos = cellPosition(col, row);
-    specimens[i].render(pos.x, pos.y);
-    // parent indicator
-    if (col === 1 && row === 1) {
-      noFill();
-      stroke(180, 180, 180, 200);
-      strokeWeight(2);
+    let pos = cellPosition(col, row);
+    let tintAlpha = 255;
+    if (transition) {
+      const u = Math.min(1, transition.elapsedMs / transition.durationMs);
+      // children other than parent fade out as transition runs
+      if (i !== 4) tintAlpha = 255 * (1 - u * 0.6);
+      // the parent slides from the source cell into the center as it appears
+      if (i === 4) {
+        const src = cellPosition(transition.fromCol, transition.fromRow);
+        const dst = cellPosition(1, 1);
+        pos = { x: src.x + (dst.x - src.x) * u, y: src.y + (dst.y - src.y) * u };
+        tintAlpha = 255 * u;
+      }
+    }
+    if (tintAlpha < 255) {
+      tintImage(specimens[i], pos.x, pos.y, tintAlpha);
+    } else {
+      specimens[i].render(pos.x, pos.y);
+    }
+    if (i === 4 && !transition) {
+      push();
+      noFill(); stroke(180, 180, 180, 200); strokeWeight(2);
       rect(pos.x - 2, pos.y - 2, CELL_PX + 4, CELL_PX + 4);
+      pop();
     }
   }
+}
+
+function tintImage(spec, x, y, alpha) {
+  push();
+  tint(255, alpha);
+  spec.render(x, y);
+  pop();
 }
