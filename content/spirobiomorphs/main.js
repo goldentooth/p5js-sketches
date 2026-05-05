@@ -321,6 +321,48 @@ class Specimen {
   }
 }
 
+// === Breeding ===
+let parentSeed = null;       // RNG seed used to generate the current 8 children
+let parentGenome = null;
+let mutationsPerOffspring = 1;
+
+function rebuildChildren() {
+  const rng = makeRng(parentSeed);
+  for (let i = 0; i < 9; i++) {
+    if (i === 4) continue;
+    specimens[i] = new Specimen(mutate(parentGenome, mutationsPerOffspring, rng));
+  }
+}
+
+function setParent(genome) {
+  parentGenome = genome;
+  parentSeed = (Math.random() * 0xffffffff) >>> 0;
+  specimens[4] = new Specimen(parentGenome);
+  rebuildChildren();
+}
+
+function breedFromCell(cellIdx) {
+  if (cellIdx === 4) return; // clicking parent is no-op
+  setParent(specimens[cellIdx].genome);
+}
+
+function cellAt(mx, my) {
+  for (let row = 0; row < GRID; row++) {
+    for (let col = 0; col < GRID; col++) {
+      const pos = cellPosition(col, row);
+      if (mx >= pos.x && mx < pos.x + CELL_PX && my >= pos.y && my < pos.y + CELL_PX) {
+        return row * GRID + col;
+      }
+    }
+  }
+  return -1;
+}
+
+function mousePressed() {
+  const idx = cellAt(mouseX, mouseY);
+  if (idx >= 0) breedFromCell(idx);
+}
+
 function strokeSegment(buf, layer, specimen, tA, tB) {
   const totalT = layer.revs * Math.PI * 2;
   const tNormA = tA / totalT;
@@ -363,17 +405,9 @@ function setup() {
   const c = createCanvas(CANVAS_W, CANVAS_H);
   c.parent('sketch-holder');
   pixelDensity(1);
-  const initialSeed = (Math.random() * 0xffffffff) >>> 0;
-  const seedRng = makeRng(initialSeed);
-  const parentGenome = curatedSeedGenome(seedRng);
-  const childRng = makeRng((initialSeed + 1) >>> 0);
-  const grid = new Array(9);
-  grid[4] = new Specimen(parentGenome);
-  for (let i = 0; i < 9; i++) {
-    if (i === 4) continue;
-    grid[i] = new Specimen(mutate(parentGenome, 1, childRng));
-  }
-  specimens = grid;
+  specimens = new Array(9);
+  const seedRng = makeRng((Math.random() * 0xffffffff) >>> 0);
+  setParent(curatedSeedGenome(seedRng));
   lastFrameMs = millis();
 }
 
