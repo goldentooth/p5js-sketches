@@ -51,59 +51,97 @@ function sampleGradient(palette, a, b, tNorm) {
   return [h, s, l];
 }
 
-// Renders one layer, rotated by aOuter and translated by `offset` along x.
-// (The outer rotation is applied to the whole composition; offset places
-// the layer at radius `offset` from origin before stamping.)
-function drawLayerInto(buf, layer, aOuter, palette) {
-  if (layer.r >= layer.R) return;
-  const steps = 1200;
-  const cosA = Math.cos(aOuter);
-  const sinA = Math.sin(aOuter);
+// === Animated rendering ===
+// A specimen "instance" tracks per-layer pen state separately from the genome:
+//   instance.tPrev[layerIdx] — pen t at last frame
+//   instance.t[layerIdx]     — pen t at current frame
+// `specimen` is the genome (palette, k_outer, layers). `instance.layerSpeed[i]`
+// is a fixed multiplier so different layers don't all march in lockstep.
+
+function makeInstance(specimen) {
+  return {
+    specimen,
+    t: specimen.layers.map(() => 0),
+    layerSpeed: specimen.layers.map((_, i) => 1 + i * 0.13), // slight desync
+  };
+}
+
+const FADE_ALPHA = 12; // 0..255, lower = longer trail
+const SEGMENTS_PER_FULL_REV = 240;
+
+function stepInstance(instance, dt, penSpeed, buf) {
+  // 1) Fade overlay — must be in BLEND mode so destination is partially erased.
+  buf.push();
+  buf.resetMatrix();
+  buf.blendMode(BLEND);
+  buf.noStroke();
+  buf.fill(0, 0, 0, FADE_ALPHA);
+  buf.rect(0, 0, buf.width, buf.height);
+  buf.pop();
+
+  // 2) Stroke new segments in ADD mode.
+  buf.blendMode(ADD);
   buf.colorMode(HSL, 360, 100, 100, 1);
+  const { specimen } = instance;
+  for (let li = 0; li < specimen.layers.length; li++) {
+    const layer = specimen.layers[li];
+    if (layer.r >= layer.R) continue;
+    const totalT = layer.revs * Math.PI * 2;
+    const tPrev = instance.t[li];
+    let tNext = tPrev + dt * penSpeed * instance.layerSpeed[li] * 4;
+    // Number of mini-segments to stroke this frame, proportional to angle covered.
+    const segCount = Math.max(1, Math.ceil((tNext - tPrev) / (Math.PI * 2) * SEGMENTS_PER_FULL_REV));
+    for (let s = 0; s < segCount; s++) {
+      const tA = tPrev + (s / segCount) * (tNext - tPrev);
+      const tB = tPrev + ((s + 1) / segCount) * (tNext - tPrev);
+      // wrap each end independently to [0, totalT]
+      const wA = ((tA % totalT) + totalT) % totalT;
+      const wB = ((tB % totalT) + totalT) % totalT;
+      // skip the wrap-around segment (don't draw a chord across the wrap)
+      if (wB < wA) continue;
+      strokeSegment(buf, layer, specimen, wA, wB);
+    }
+    instance.t[li] = tNext > totalT ? tNext - totalT : tNext;
+  }
+  buf.blendMode(BLEND);
+}
+
+function strokeSegment(buf, layer, specimen, tA, tB) {
+  const totalT = layer.revs * Math.PI * 2;
+  const tNormA = tA / totalT;
+  const p1 = hypoPoint(tA, layer.R, layer.r, layer.d);
+  const p2 = hypoPoint(tB, layer.R, layer.r, layer.d);
+  const midDist = Math.hypot((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+  if (!isInBand(midDist, layer)) return;
+  const [h, s, l] = sampleGradient(specimen.palette, layer.palette_a, layer.palette_b, tNormA);
+  buf.stroke(h, s, l, 0.55);
   buf.strokeWeight(layer.stroke_w);
-  for (let i = 0; i < steps; i++) {
-    const tNorm = i / steps;
-    const t1 = tNorm * Math.PI * 2 * layer.revs;
-    const t2 = ((i + 1) / steps) * Math.PI * 2 * layer.revs;
-    const p1 = hypoPoint(t1, layer.R, layer.r, layer.d);
-    const p2 = hypoPoint(t2, layer.R, layer.r, layer.d);
-    const midDist = Math.hypot((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
-    if (!isInBand(midDist, layer)) continue;
-    const [h, s, l] = sampleGradient(palette, layer.palette_a, layer.palette_b, tNorm);
-    buf.stroke(h, s, l, 0.6);
+  for (let outer = 0; outer < specimen.k_outer; outer++) {
+    const aOuter = (outer / specimen.k_outer) * Math.PI * 2;
+    const cosA = Math.cos(aOuter);
+    const sinA = Math.sin(aOuter);
     const x1 = p1.x + layer.offset, y1 = p1.y;
     const x2 = p2.x + layer.offset, y2 = p2.y;
     const rx1 = x1 * cosA - y1 * sinA;
     const ry1 = x1 * sinA + y1 * cosA;
     const rx2 = x2 * cosA - y2 * sinA;
     const ry2 = x2 * sinA + y2 * cosA;
-    buf.line(rx1, ry1, rx2, ry2);
+    buf.line(rx1 + buf.width / 2, ry1 + buf.height / 2, rx2 + buf.width / 2, ry2 + buf.height / 2);
   }
-}
-
-// `specimen` (this task): { k_outer, palette, layers: [...] }
-function drawSpecimenStatic(buf, specimen) {
-  buf.blendMode(ADD);
-  for (let outer = 0; outer < specimen.k_outer; outer++) {
-    const aOuter = (outer / specimen.k_outer) * Math.PI * 2;
-    for (const layer of specimen.layers) {
-      drawLayerInto(buf, layer, aOuter, specimen.palette);
-    }
-  }
-  buf.blendMode(BLEND);
 }
 
 // === Sketch ===
 let testBuf;
+let testInstance;
+let lastFrameMs = 0;
 
 function setup() {
   const c = createCanvas(CANVAS_W, CANVAS_H);
   c.parent('sketch-holder');
   pixelDensity(1);
   testBuf = createGraphics(280, 280);
-  testBuf.translate(140, 140);
   testBuf.background(BG);
-  drawSpecimenStatic(testBuf, {
+  testInstance = makeInstance({
     k_outer: 6,
     palette: [[30, 80, 65], [340, 60, 60], [200, 70, 55], [80, 60, 55]],
     layers: [
@@ -115,9 +153,14 @@ function setup() {
         palette_a: 3, palette_b: 1, stroke_w: 2.5 },
     ],
   });
+  lastFrameMs = millis();
 }
 
 function draw() {
   background(BG);
+  const now = millis();
+  const dt = Math.min(0.1, (now - lastFrameMs) / 1000); // clamp first-frame spike
+  lastFrameMs = now;
+  stepInstance(testInstance, dt, 1.0, testBuf);
   image(testBuf, CANVAS_W / 2 - 140, CANVAS_H / 2 - 140);
 }
