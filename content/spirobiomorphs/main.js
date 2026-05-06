@@ -282,10 +282,34 @@ class Specimen {
     this.buffer.background(BG);
     this.t = genome.layers.map(() => 0);
     this.layerSpeed = genome.layers.map((_, i) => 1 + i * 0.13);
+    this.warmup();
   }
   resetBuffer() {
     this.buffer.background(BG);
     this.t = this.genome.layers.map(() => 0);
+    this.warmup();
+  }
+  // Pre-render: draw each layer's full path once at high resolution, no fade.
+  // Cells are visibly complete from frame 1; live animation (step) breathes
+  // on top of this base.
+  warmup() {
+    const buf = this.buffer;
+    buf.blendMode(ADD);
+    buf.colorMode(HSL, 360, 100, 100, 1);
+    const g = this.genome;
+    const N = 800;
+    for (let li = 0; li < g.layers.length; li++) {
+      const layer = g.layers[li];
+      if (layer.r >= layer.R) continue;
+      const totalT = layer.revs * Math.PI * 2;
+      for (let s = 0; s < N; s++) {
+        const tA = (s / N) * totalT;
+        const tB = ((s + 1) / N) * totalT;
+        strokeSegment(buf, layer, g, tA, tB);
+      }
+      this.t[li] = totalT * 0.9; // pick up live drawing near end-of-path
+    }
+    buf.blendMode(BLEND);
   }
   step(dt, penSpeed) {
     const buf = this.buffer;
@@ -304,7 +328,7 @@ class Specimen {
       if (layer.r >= layer.R) continue;
       const totalT = layer.revs * Math.PI * 2;
       const tPrev = this.t[li];
-      let tNext = tPrev + dt * penSpeed * this.layerSpeed[li] * 3.0;
+      let tNext = tPrev + dt * penSpeed * this.layerSpeed[li] * 1.2;
       const segCount = Math.max(1, Math.ceil((tNext - tPrev) / (Math.PI * 2) * SEGMENTS_PER_FULL_REV));
       for (let s = 0; s < segCount; s++) {
         const tA = tPrev + (s / segCount) * (tNext - tPrev);
@@ -493,13 +517,11 @@ function savePinned() {
 // pen has traced the full path at least once for every layer.
 function renderThumbnail(genome) {
   const tmpSpecimen = new Specimen(genome);
-  // Discard the default 280x280 buffer; replace with a thumb-sized one.
+  // Discard the default 280x280 buffer; replace with a thumb-sized one and re-warm.
   tmpSpecimen.buffer.remove();
   tmpSpecimen.buffer = createGraphics(THUMB_PX, THUMB_PX);
   tmpSpecimen.buffer.background(BG);
-  // Run enough simulated frames so each layer completes at least one pass.
-  // Using a large dt per step compresses time. ~120 steps at dt=0.1 = sim 12s.
-  for (let i = 0; i < 120; i++) tmpSpecimen.step(0.1, 1.0);
+  tmpSpecimen.warmup();
   const url = tmpSpecimen.buffer.canvas.toDataURL('image/png');
   tmpSpecimen.buffer.remove();
   return url;
