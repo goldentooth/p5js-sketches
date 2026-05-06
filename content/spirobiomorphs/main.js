@@ -261,17 +261,24 @@ function fingerprint(genome) {
 }
 
 // === Specimen ===
-// Each cell owns a p5.Graphics buffer. The full path is drawn once on creation
-// in `warmup()` (additive blending on dark background); after that the buffer
-// is static and just gets composited each frame.
+// Each cell owns a p5.Graphics buffer. `warmup()` rasterizes the full path of
+// every layer once on creation (additive blend against near-black) so the cell
+// is visible from frame 1. `step()` then continues advancing each layer's pen
+// every frame on top — additive ink, no fade. Live drawing reaches already-
+// saturated pixels along the path, so net visual change is subtle (pen position
+// and sub-pixel resampling give the "still alive" feel without the cell ever
+// emptying).
 
 const CELL_PX = 280;
+const SEGMENTS_PER_FULL_REV = 240;
 
 class Specimen {
   constructor(genome) {
     this.genome = genome;
     this.buffer = createGraphics(CELL_PX, CELL_PX);
     this.buffer.background(BG);
+    this.t = genome.layers.map(() => 0);
+    this.layerSpeed = genome.layers.map((_, i) => 1 + i * 0.13);
     this.warmup();
   }
   warmup() {
@@ -290,6 +297,31 @@ class Specimen {
         const tB = ((s + 1) / N) * totalT;
         strokeSegment(buf, layer, g, tA, tB);
       }
+      this.t[li] = totalT * 0.9; // pick up live drawing near end-of-path
+    }
+    buf.blendMode(BLEND);
+  }
+  step(dt, penSpeed) {
+    const buf = this.buffer;
+    buf.blendMode(ADD);
+    buf.colorMode(HSL, 360, 100, 100, 1);
+    const g = this.genome;
+    for (let li = 0; li < g.layers.length; li++) {
+      const layer = g.layers[li];
+      if (layer.r >= layer.R) continue;
+      const totalT = layer.revs * Math.PI * 2;
+      const tPrev = this.t[li];
+      let tNext = tPrev + dt * penSpeed * this.layerSpeed[li] * 1.2;
+      const segCount = Math.max(1, Math.ceil((tNext - tPrev) / (Math.PI * 2) * SEGMENTS_PER_FULL_REV));
+      for (let s = 0; s < segCount; s++) {
+        const tA = tPrev + (s / segCount) * (tNext - tPrev);
+        const tB = tPrev + ((s + 1) / segCount) * (tNext - tPrev);
+        const wA = ((tA % totalT) + totalT) % totalT;
+        const wB = ((tB % totalT) + totalT) % totalT;
+        if (wB < wA) continue;
+        strokeSegment(buf, layer, g, wA, wB);
+      }
+      this.t[li] = tNext > totalT ? tNext - totalT : tNext;
     }
     buf.blendMode(BLEND);
   }
@@ -307,6 +339,7 @@ let historyForward = []; // entries undone by Back, available for Forward
 let parentGenome = null;
 let parentSeed = null;
 let mutationsPerOffspring = 1;
+let penSpeed = 1.0;
 let transition = null; // { fromCol, fromRow, durationMs, elapsedMs }
 
 function startTransition(fromIdx) {
@@ -406,6 +439,8 @@ function buildControls() {
   sliderRow.innerHTML = `
     <label>Mutations per offspring: <span id="mut-value">1</span></label>
     <input type="range" id="mut-slider" class="control-slider" min="1" max="5" value="1">
+    <label>Pen speed: <span id="speed-value">1.0×</span></label>
+    <input type="range" id="speed-slider" class="control-slider" min="25" max="400" value="100">
   `;
   const mutSlider = document.getElementById('mut-slider');
   const mutValue  = document.getElementById('mut-value');
@@ -413,6 +448,12 @@ function buildControls() {
     mutationsPerOffspring = parseInt(mutSlider.value, 10);
     mutValue.textContent = mutationsPerOffspring;
     rebuildChildren();
+  });
+  const speedSlider = document.getElementById('speed-slider');
+  const speedValue  = document.getElementById('speed-value');
+  speedSlider.addEventListener('input', () => {
+    penSpeed = parseInt(speedSlider.value, 10) / 100;
+    speedValue.textContent = penSpeed.toFixed(2) + '×';
   });
 }
 
@@ -610,6 +651,7 @@ function draw() {
   for (let i = 0; i < 9; i++) {
     const col = i % GRID;
     const row = Math.floor(i / GRID);
+    specimens[i].step(dt, penSpeed);
     let pos = cellPosition(col, row);
     let tintAlpha = 255;
     if (transition) {
