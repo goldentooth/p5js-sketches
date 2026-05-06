@@ -8,11 +8,12 @@ description: |
   3×3 grid; the clicked child becomes the new parent and 8 fresh mutants
   spawn around it. Inspired by The Blind Watchmaker (Dawkins, 1986).
 usage: |
-  Click any child to make it the new parent. Use Back/Forward to navigate
-  breeding history (the same children reappear — navigation is
-  deterministic). Save favorites to localStorage with the 💾 button.
-  Numpad keys 1–9 pick a child; Z/X = Back/Forward; R reset; N random;
-  S save; +/− adjusts mutation rate.
+  Click any child to make it the new parent. Click the parent (center) to
+  view at 2048×2048; right-click the popup to save it. Back/Forward
+  navigates breeding history deterministically. 💾 saves favorites to
+  localStorage. Numpad keys 1–9 pick a child; 5/Enter opens the parent
+  fullscreen; Z/X = Back/Forward; R reset; N random; S save; +/− adjusts
+  mutation rate.
 scripts:
   - "main.js"
 controls: |

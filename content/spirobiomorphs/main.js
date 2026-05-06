@@ -284,22 +284,11 @@ class Specimen {
   warmup() {
     const buf = this.buffer;
     buf.background(BG);
-    buf.blendMode(ADD);
-    buf.colorMode(HSL, 360, 100, 100, 1);
-    const g = this.genome;
-    const N = 800;
-    for (let li = 0; li < g.layers.length; li++) {
-      const layer = g.layers[li];
-      if (layer.r >= layer.R) continue;
-      const totalT = layer.revs * Math.PI * 2;
-      for (let s = 0; s < N; s++) {
-        const tA = (s / N) * totalT;
-        const tB = ((s + 1) / N) * totalT;
-        strokeSegment(buf, layer, g, tA, tB);
-      }
-      this.t[li] = totalT * 0.9; // pick up live drawing near end-of-path
+    rasterizeFullPath(this.genome, buf);
+    // pick up live drawing near end-of-path so step() continues smoothly
+    for (let li = 0; li < this.genome.layers.length; li++) {
+      this.t[li] = this.genome.layers[li].revs * Math.PI * 2 * 0.9;
     }
-    buf.blendMode(BLEND);
   }
   step(dt, penSpeed) {
     const buf = this.buffer;
@@ -499,15 +488,68 @@ function savePinned() {
 // Render a static thumbnail by stepping a Specimen long enough that the
 // pen has traced the full path at least once for every layer.
 function renderThumbnail(genome) {
-  const tmpSpecimen = new Specimen(genome);
-  // Discard the default 280x280 buffer; replace with a thumb-sized one and re-warm.
-  tmpSpecimen.buffer.remove();
-  tmpSpecimen.buffer = createGraphics(THUMB_PX, THUMB_PX);
-  tmpSpecimen.buffer.background(BG);
-  tmpSpecimen.warmup();
-  const url = tmpSpecimen.buffer.canvas.toDataURL('image/png');
-  tmpSpecimen.buffer.remove();
+  const buf = createGraphics(THUMB_PX, THUMB_PX);
+  buf.background(BG);
+  rasterizeFullPath(genome, buf);
+  const url = buf.canvas.toDataURL('image/png');
+  buf.remove();
   return url;
+}
+
+// === Fullscreen view ===
+// Click the parent (or press 5/Enter) to render the parent genome at high
+// resolution and display it as an overlay. Click anywhere or press Escape
+// to dismiss.
+const HIRES_PX = 2048;
+
+function openFullscreen() {
+  if (!parentGenome) return;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = [
+    'position:fixed', 'inset:0',
+    'background:rgba(0,0,0,0.94)',
+    'display:flex', 'align-items:center', 'justify-content:center',
+    'flex-direction:column', 'gap:12px',
+    'z-index:10000', 'cursor:zoom-out',
+  ].join(';');
+
+  const status = document.createElement('div');
+  status.textContent = `Rendering at ${HIRES_PX}×${HIRES_PX}…`;
+  status.style.cssText = 'color:#aaa;font-family:monospace;font-size:0.9em;';
+  overlay.appendChild(status);
+  document.body.appendChild(overlay);
+
+  const close = () => {
+    if (overlay.parentNode) document.body.removeChild(overlay);
+    document.removeEventListener('keydown', escHandler);
+  };
+  const escHandler = (e) => { if (e.key === 'Escape') close(); };
+  overlay.addEventListener('click', close);
+  document.addEventListener('keydown', escHandler);
+
+  // Defer to next frame so the overlay paints before we block on rendering.
+  requestAnimationFrame(() => {
+    const buf = createGraphics(HIRES_PX, HIRES_PX);
+    buf.background(BG);
+    rasterizeFullPath(parentGenome, buf);
+
+    const img = document.createElement('img');
+    img.src = buf.canvas.toDataURL('image/png');
+    const dim = Math.min(window.innerWidth, window.innerHeight) - 60;
+    img.style.cssText = `width:${dim}px;height:${dim}px;display:block;border-radius:8px;`;
+    img.title = 'Right-click → Save Image to keep at full resolution';
+
+    const hint = document.createElement('div');
+    hint.textContent = `Click anywhere (or press Esc) to close · right-click → Save Image for full ${HIRES_PX}px`;
+    hint.style.cssText = 'color:#888;font-family:monospace;font-size:0.8em;';
+
+    overlay.removeChild(status);
+    overlay.appendChild(img);
+    overlay.appendChild(hint);
+
+    buf.remove();
+  });
 }
 
 function renderSavedStrip() {
@@ -563,12 +605,14 @@ function cellAt(mx, my) {
 
 function mousePressed() {
   const idx = cellAt(mouseX, mouseY);
+  if (idx === 4) { openFullscreen(); return; }
   if (idx >= 0) breedFromCell(idx);
 }
 
 function keyPressed() {
-  // Numpad-layout grid mapping: 7 8 9 / 4 5 6 / 1 2 3
-  const numpadMap = { '7': 0, '8': 1, '9': 2, '4': 3, '5': 4, '6': 5, '1': 6, '2': 7, '3': 8 };
+  // Numpad-layout grid mapping: 7 8 9 / 4 5 6 / 1 2 3 (5 = parent → fullscreen)
+  const numpadMap = { '7': 0, '8': 1, '9': 2, '4': 3, '6': 5, '1': 6, '2': 7, '3': 8 };
+  if (key === '5' || key === 'Enter') { openFullscreen(); return; }
   if (numpadMap[key] !== undefined) { breedFromCell(numpadMap[key]); return; }
   if (key === 'z' || key === 'Z') { goBack(); return; }
   if (key === 'x' || key === 'X') { goForward(); return; }
@@ -589,7 +633,7 @@ function keyPressed() {
   }
 }
 
-function strokeSegment(buf, layer, specimen, tA, tB) {
+function strokeSegment(buf, layer, specimen, tA, tB, scale = 1) {
   const totalT = layer.revs * Math.PI * 2;
   const tNormA = tA / totalT;
   const p1 = hypoPoint(tA, layer.R, layer.r, layer.d);
@@ -598,7 +642,7 @@ function strokeSegment(buf, layer, specimen, tA, tB) {
   if (!isInBand(midDist, layer)) return;
   const [h, s, l] = sampleGradient(specimen.palette, layer.palette_a, layer.palette_b, tNormA);
   buf.stroke(h, s, l, 0.55);
-  buf.strokeWeight(layer.stroke_w);
+  buf.strokeWeight(layer.stroke_w * scale);
   // With k_outer = 1 there's no rotational symmetry to balance an asymmetric
   // offset, so the whole composition would slide off-center. Treat offset as 0.
   const effectiveOffset = specimen.k_outer === 1 ? 0 : layer.offset;
@@ -606,14 +650,37 @@ function strokeSegment(buf, layer, specimen, tA, tB) {
     const aOuter = (outer / specimen.k_outer) * Math.PI * 2;
     const cosA = Math.cos(aOuter);
     const sinA = Math.sin(aOuter);
-    const x1 = p1.x + effectiveOffset, y1 = p1.y;
-    const x2 = p2.x + effectiveOffset, y2 = p2.y;
+    const x1 = (p1.x + effectiveOffset) * scale, y1 = p1.y * scale;
+    const x2 = (p2.x + effectiveOffset) * scale, y2 = p2.y * scale;
     const rx1 = x1 * cosA - y1 * sinA;
     const ry1 = x1 * sinA + y1 * cosA;
     const rx2 = x2 * cosA - y2 * sinA;
     const ry2 = x2 * sinA + y2 * cosA;
     buf.line(rx1 + buf.width / 2, ry1 + buf.height / 2, rx2 + buf.width / 2, ry2 + buf.height / 2);
   }
+}
+
+// Rasterize the full path of every layer of `genome` into `buf`. The geometry
+// is scaled by buf.width / CELL_PX so it fills the buffer regardless of size.
+// Used by Specimen.warmup (CELL_PX), renderThumbnail (THUMB_PX), and
+// openFullscreen (HIRES_PX). Segment count grows with scale so high-res
+// renders stay smooth.
+function rasterizeFullPath(genome, buf) {
+  const scale = buf.width / CELL_PX;
+  buf.blendMode(ADD);
+  buf.colorMode(HSL, 360, 100, 100, 1);
+  const N = Math.max(800, Math.round(800 * scale));
+  for (let li = 0; li < genome.layers.length; li++) {
+    const layer = genome.layers[li];
+    if (layer.r >= layer.R) continue;
+    const totalT = layer.revs * Math.PI * 2;
+    for (let s = 0; s < N; s++) {
+      const tA = (s / N) * totalT;
+      const tB = ((s + 1) / N) * totalT;
+      strokeSegment(buf, layer, genome, tA, tB, scale);
+    }
+  }
+  buf.blendMode(BLEND);
 }
 
 const GRID = 3;
