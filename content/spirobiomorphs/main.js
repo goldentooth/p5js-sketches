@@ -167,7 +167,7 @@ function curatedSeedGenome(rng) {
       stroke_w: 1.0,
     });
   }
-  return { k_outer: rngInt(rng, 4, 8), n_layers: n, fade_alpha: rngInt(rng, 1, 2), palette, layers };
+  return { k_outer: rngInt(rng, 4, 8), n_layers: n, fade_alpha: rngInt(rng, 0, 1), palette, layers };
 }
 
 // Returns a flat list of {scope, layerIdx, name, geneDef} entries that mutation
@@ -304,7 +304,7 @@ class Specimen {
       if (layer.r >= layer.R) continue;
       const totalT = layer.revs * Math.PI * 2;
       const tPrev = this.t[li];
-      let tNext = tPrev + dt * penSpeed * this.layerSpeed[li] * 1.2;
+      let tNext = tPrev + dt * penSpeed * this.layerSpeed[li] * 3.0;
       const segCount = Math.max(1, Math.ceil((tNext - tPrev) / (Math.PI * 2) * SEGMENTS_PER_FULL_REV));
       for (let s = 0; s < segCount; s++) {
         const tA = tPrev + (s / segCount) * (tNext - tPrev);
