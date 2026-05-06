@@ -21,7 +21,7 @@ controls: |
     <div id="control-row-buttons" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
     <div id="control-row-sliders" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;"></div>
     <div id="status-line" style="font-size: 0.85em; color: #aaa;"></div>
-    <div id="saved-strip" style="display: flex; gap: 6px; overflow-x: auto; min-height: 130px;"></div>
+    <div id="saved-strip" style="display: flex; gap: 6px; overflow-x: auto;"></div>
     <div style="font-size: 0.75em; color: #888; margin-top: 8px;">
       Inspired by Richard Dawkins' biomorphs from
       <em>The Blind Watchmaker</em> (1986) and the classic Spirograph drawing toy.
