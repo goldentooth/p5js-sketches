@@ -620,7 +620,7 @@ let lastFrameMs = 0;
 
 function setup() {
   const c = createCanvas(CANVAS_W, CANVAS_H);
-  c.parent('sketch-holder');
+  c.parent('sketch-container');
   pixelDensity(1);
   specimens = new Array(9);
   const seedRng = makeRng((Math.random() * 0xffffffff) >>> 0);
