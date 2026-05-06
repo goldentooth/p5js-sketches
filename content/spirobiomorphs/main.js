@@ -76,7 +76,7 @@ function rngSign(rng) { return rng() < 0.5 ? -1 : 1; }
 const SPECIMEN_GENES = [
   { name: 'k_outer',    type: 'int', range: [1, 12] },
   { name: 'n_layers',   type: 'int', range: [1, 5]  },
-  { name: 'fade_alpha', type: 'int', range: [1, 24] }, // per-frame fade overlay alpha; lower = longer trail
+  { name: 'fade_alpha', type: 'int', range: [0, 8] }, // per-frame fade overlay alpha; lower = longer trail; 0 = persistent
 ];
 // palette: 4 slots × (H, S, L). Treated as a flat list of 12 cfloat genes for mutation.
 const PALETTE_SLOTS = 4;
@@ -118,7 +118,7 @@ function randomGenome(rng) {
   return {
     k_outer: rngInt(rng, 1, 12),
     n_layers: n,
-    fade_alpha: rngInt(rng, 1, 24),
+    fade_alpha: rngInt(rng, 0, 8),
     palette,
     layers,
   };
@@ -167,7 +167,7 @@ function curatedSeedGenome(rng) {
       stroke_w: 1.0,
     });
   }
-  return { k_outer: rngInt(rng, 4, 8), n_layers: n, fade_alpha: rngInt(rng, 2, 5), palette, layers };
+  return { k_outer: rngInt(rng, 4, 8), n_layers: n, fade_alpha: rngInt(rng, 1, 2), palette, layers };
 }
 
 // Returns a flat list of {scope, layerIdx, name, geneDef} entries that mutation
@@ -304,7 +304,7 @@ class Specimen {
       if (layer.r >= layer.R) continue;
       const totalT = layer.revs * Math.PI * 2;
       const tPrev = this.t[li];
-      let tNext = tPrev + dt * penSpeed * this.layerSpeed[li] * 4;
+      let tNext = tPrev + dt * penSpeed * this.layerSpeed[li] * 1.2;
       const segCount = Math.max(1, Math.ceil((tNext - tPrev) / (Math.PI * 2) * SEGMENTS_PER_FULL_REV));
       for (let s = 0; s < segCount; s++) {
         const tA = tPrev + (s / segCount) * (tNext - tPrev);
