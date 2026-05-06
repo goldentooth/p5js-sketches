@@ -292,7 +292,10 @@ class Specimen {
   }
   step(dt, penSpeed) {
     const buf = this.buffer;
-    buf.blendMode(ADD);
+    // Live drawing uses BLEND so the pen repaints at the gradient color rather
+    // than ADD-ing to existing pixels (which would steadily lighten everything
+    // it passes over toward white). Warmup keeps ADD for the glow base.
+    buf.blendMode(BLEND);
     buf.colorMode(HSL, 360, 100, 100, 1);
     const g = this.genome;
     for (let li = 0; li < g.layers.length; li++) {
@@ -500,7 +503,7 @@ function renderThumbnail(genome) {
 // Click the parent (or press 5/Enter) to render the parent genome at high
 // resolution and display it as an overlay. Click anywhere or press Escape
 // to dismiss.
-const HIRES_PX = 2048;
+const HIRES_PX = 4096;
 
 function openFullscreen() {
   if (!parentGenome) return;
