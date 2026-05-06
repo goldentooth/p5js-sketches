@@ -670,7 +670,7 @@ function strokeSegment(buf, layer, specimen, tA, tB, scale = 1) {
 // renders stay smooth.
 function rasterizeFullPath(genome, buf) {
   const scale = buf.width / CELL_PX;
-  buf.blendMode(ADD);
+  buf.blendMode(BLEND);
   buf.colorMode(HSL, 360, 100, 100, 1);
   const N = Math.max(800, Math.round(800 * scale));
   for (let li = 0; li < genome.layers.length; li++) {
