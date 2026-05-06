@@ -402,8 +402,10 @@ function updateStatus() {
   const el = document.getElementById('status-line');
   if (!el || !parentGenome) return;
   el.textContent = `Generation: ${history.length}  ·  Layers: ${parentGenome.n_layers}  ·  k=${parentGenome.k_outer}  ·  fingerprint: ${fingerprint(parentGenome)}`;
-  document.getElementById('back-btn').disabled = history.length === 0;
-  document.getElementById('forward-btn').disabled = historyForward.length === 0;
+  const backBtn = document.getElementById('back-btn');
+  const fwdBtn = document.getElementById('forward-btn');
+  if (backBtn) backBtn.disabled = history.length === 0;
+  if (fwdBtn) fwdBtn.disabled = historyForward.length === 0;
 }
 
 function buildControls() {
@@ -622,11 +624,11 @@ function setup() {
   const c = createCanvas(CANVAS_W, CANVAS_H);
   c.parent('sketch-container');
   pixelDensity(1);
+  buildControls();
   specimens = new Array(9);
   const seedRng = makeRng((Math.random() * 0xffffffff) >>> 0);
   setParent(curatedSeedGenome(seedRng));
   lastFrameMs = millis();
-  buildControls();
   renderSavedStrip();
 }
 
