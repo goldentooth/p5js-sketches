@@ -599,12 +599,15 @@ function strokeSegment(buf, layer, specimen, tA, tB) {
   const [h, s, l] = sampleGradient(specimen.palette, layer.palette_a, layer.palette_b, tNormA);
   buf.stroke(h, s, l, 0.55);
   buf.strokeWeight(layer.stroke_w);
+  // With k_outer = 1 there's no rotational symmetry to balance an asymmetric
+  // offset, so the whole composition would slide off-center. Treat offset as 0.
+  const effectiveOffset = specimen.k_outer === 1 ? 0 : layer.offset;
   for (let outer = 0; outer < specimen.k_outer; outer++) {
     const aOuter = (outer / specimen.k_outer) * Math.PI * 2;
     const cosA = Math.cos(aOuter);
     const sinA = Math.sin(aOuter);
-    const x1 = p1.x + layer.offset, y1 = p1.y;
-    const x2 = p2.x + layer.offset, y2 = p2.y;
+    const x1 = p1.x + effectiveOffset, y1 = p1.y;
+    const x2 = p2.x + effectiveOffset, y2 = p2.y;
     const rx1 = x1 * cosA - y1 * sinA;
     const ry1 = x1 * sinA + y1 * cosA;
     const rx2 = x2 * cosA - y2 * sinA;
