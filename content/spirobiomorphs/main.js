@@ -118,7 +118,7 @@ function randomGenome(rng) {
   return {
     k_outer: rngInt(rng, 1, 12),
     n_layers: n,
-    fade_alpha: rngInt(rng, 0, 8),
+    fade_alpha: 0,
     palette,
     layers,
   };
@@ -167,7 +167,7 @@ function curatedSeedGenome(rng) {
       stroke_w: 1.0,
     });
   }
-  return { k_outer: rngInt(rng, 4, 8), n_layers: n, fade_alpha: rngInt(rng, 0, 1), palette, layers };
+  return { k_outer: rngInt(rng, 4, 8), n_layers: n, fade_alpha: 0, palette, layers };
 }
 
 // Returns a flat list of {scope, layerIdx, name, geneDef} entries that mutation
