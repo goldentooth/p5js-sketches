@@ -74,8 +74,9 @@ function rngSign(rng) { return rng() < 0.5 ? -1 : 1; }
 // range: [min, max] inclusive
 // step: amount per ±1 mutation (defined for qfloat/int; cfloat uses 5% of range)
 const SPECIMEN_GENES = [
-  { name: 'k_outer',  type: 'int', range: [1, 12] },
-  { name: 'n_layers', type: 'int', range: [1, 5] },
+  { name: 'k_outer',    type: 'int', range: [1, 12] },
+  { name: 'n_layers',   type: 'int', range: [1, 5]  },
+  { name: 'fade_alpha', type: 'int', range: [1, 24] }, // per-frame fade overlay alpha; lower = longer trail
 ];
 // palette: 4 slots × (H, S, L). Treated as a flat list of 12 cfloat genes for mutation.
 const PALETTE_SLOTS = 4;
@@ -117,6 +118,7 @@ function randomGenome(rng) {
   return {
     k_outer: rngInt(rng, 1, 12),
     n_layers: n,
+    fade_alpha: rngInt(rng, 1, 24),
     palette,
     layers,
   };
@@ -165,7 +167,7 @@ function curatedSeedGenome(rng) {
       stroke_w: 1.0,
     });
   }
-  return { k_outer: rngInt(rng, 4, 8), n_layers: n, palette, layers };
+  return { k_outer: rngInt(rng, 4, 8), n_layers: n, fade_alpha: rngInt(rng, 2, 5), palette, layers };
 }
 
 // Returns a flat list of {scope, layerIdx, name, geneDef} entries that mutation
@@ -291,7 +293,7 @@ class Specimen {
     buf.resetMatrix();
     buf.blendMode(BLEND);
     buf.noStroke();
-    buf.fill(0, 0, 0, FADE_ALPHA);
+    buf.fill(0, 0, 0, this.genome.fade_alpha ?? FADE_ALPHA);
     buf.rect(0, 0, buf.width, buf.height);
     buf.pop();
     buf.blendMode(ADD);
